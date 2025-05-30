@@ -78,18 +78,9 @@ data/
    - Download or view the resulting plots
    - Use batch processing for multiple regions
 
-## Requirements
-
-- Python 3.x
-- Dash
-- pyBigWig
-- pandas
-- matplotlib
-- pyfaidx
-- crested
-- tensorflow
 
 ## Installation
+See docker folder
 
 1. Clone the repository
 2. Install required packages:
