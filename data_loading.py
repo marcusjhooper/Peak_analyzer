@@ -80,6 +80,7 @@ def load_differential_peaks(table_path=None):
             'supertype_label': 'Supertype Label',
             'adjusted_p_value': 'Adjusted P-value',
             'gini_supertype_label_in_neighborhood': 'Gini Supertype Label in Neighborhood',
+            'gini_subclass_id_label_in_class':'Gini_subclass_label_in_class',
             'log2(fold_change)': 'Log2 Fold Change',
             # Additional columns that might be present
             'peak_name': 'Peak Name',

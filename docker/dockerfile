@@ -1,0 +1,63 @@
+# Base image with CUDA support
+
+# Use the NVIDIA CUDA image with development tools
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /tmp
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 python3-pip \
+    libcurl4-openssl-dev wget curl \
+    libpng-dev libfreetype6-dev \
+    pkg-config && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements.txt
+COPY ./requirements.txt /tmp/requirements.txt
+
+# Upgrade pip
+RUN python3 -m pip install --upgrade pip
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Install additional packages for the app
+RUN pip install dash dash-bootstrap-components dash-daq plotly
+
+# Clean up unnecessary files
+RUN rm -rf /var/lib/apt/lists/* /tmp/downloaded_packages /tmp/requirements.txt
+
+# Set working directory
+WORKDIR /app
+
+# Expose ports for the app
+EXPOSE 8888 8201 8202 8203 8204 8205 8050
+
+# Command to run the app
+CMD ["python3", "app.py"]
+
+#RUN pip install nvidia-cublas-cu11 nvidia-cudnn-cu11 nvidia-cuda-runtime-cu11 nvidia-cufft-cu11 nvidia-cuda-cupti-cu11
+#RUN pip install nvidia-cuda-nvrtc-cu11 nvidia-cuda-nvcc-cu11 nvidia-curand-cu11 nvidia-cusolver-cu11
+#RUN pip install nvidia-cusparse-cu11 nvidia-nccl-cu11 nvidia-nvtx-cu11
+
+# Reinstall TensorFlow or other packages without bundled CUDA
+#RUN pip install --no-cache-dir tensorflow==2.14.0
+
+#new - jupyter lab
+RUN pip install jupyter lab
+
+#added 1/15/24
+RUN pip install tensorflow[and-cuda]
+
+# Clean up any CUDA libraries installed by Python packages
+#RUN pip uninstall -y nvidia-cuda-runtime-cu12 nvidia-cublas-cu12 nvidia-cudnn-cu12 nvidia-cufft-cu12 nvidia-cuda-runtime-cu12 nvidia-cuda-cupti-cu12 nvidia-cuda-nvrtc-cu12 nvidia-curand-cu12 nvidia-cusolver-cu12 nvidia-cusparse-cu12 nvidia-nccl-cu12 nvidia-nvtx-cu12
+
+#add cubclas version 11
+#RUN apt-get install -y cuda-11-8 libcublas-11-8
+
+#FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+# Set up the environment
+#FROM nvidia/cuda:12.6.2-cudnn-devel-ubuntu22.04
+

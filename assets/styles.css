@@ -1,0 +1,182 @@
+/* Global font settings */
+* {
+    font-family: Arial, sans-serif !important;
+}
+
+pre, code {
+    font-family: monospace !important;
+}
+
+/* Dropdown styling */
+.dropdown-compact .Select-control {
+    height: 30px !important;
+    min-height: 30px !important;
+    border-radius: 4px !important;
+    overflow: hidden !important;
+}
+
+.dropdown-compact .Select-value {
+    line-height: 30px !important;
+    padding: 0 8px !important;
+}
+
+.dropdown-compact .Select-placeholder {
+    line-height: 30px !important;
+    padding: 0 8px !important;
+}
+
+.dropdown-compact .Select-input {
+    height: 28px !important;
+    padding: 0 8px !important;
+}
+
+.dropdown-compact .Select-menu-outer {
+    max-height: 200px !important;
+    border-radius: 4px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.dropdown-compact.is-focused .Select-control {
+    height: auto !important;
+    min-height: auto !important;
+    border-color: #80bdff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
+}
+
+.dropdown-compact .Select--multi .Select-value {
+    background-color: #e9ecef !important;
+    border-radius: 3px !important;
+    margin: 2px !important;
+    padding: 0 6px !important;
+    max-width: 150px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+.dropdown-compact .Select--multi .Select-value-icon {
+    border-right: 1px solid #ced4da !important;
+    padding: 0 4px !important;
+}
+
+.dropdown-compact .Select--multi .Select-value-label {
+    padding: 0 4px !important;
+}
+
+.dropdown-compact .Select-arrow {
+    top: 8px !important;
+}
+
+.dropdown-compact .Select-clear {
+    top: 8px !important;
+}
+
+/* Count indicator */
+.dropdown-compact .Select-multi-value-wrapper {
+    position: relative !important;
+    padding-right: 60px !important;
+}
+
+.dropdown-compact .Select-multi-value-wrapper::after {
+    content: attr(data-count) !important;
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background-color: #e9ecef !important;
+    padding: 2px 6px !important;
+    border-radius: 3px !important;
+    font-size: 12px !important;
+    color: #495057 !important;
+}
+
+/* Hide all but first selected value when not focused */
+.dropdown-compact:not(.is-focused) .Select--multi .Select-value:not(:first-child) {
+    display: none !important;
+}
+
+/* Show count when not focused */
+.dropdown-compact:not(.is-focused) .Select-multi-value-wrapper::after {
+    content: attr(data-count) !important;
+}
+
+/* Hide count when focused */
+.dropdown-compact.is-focused .Select-multi-value-wrapper::after {
+    display: none !important;
+}
+
+/* Table styling */
+.dash-table-container {
+    width: 100%;
+    min-width: 100%;
+    overflow-x: auto;
+}
+
+.dash-table-container .dash-spreadsheet-container {
+    width: 100%;
+    min-width: 100%;
+}
+
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner {
+    width: 100%;
+    min-width: 100%;
+}
+
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table {
+    width: 100%;
+    min-width: 100%;
+}
+
+/* Plot container styling */
+.plot-container {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+}
+
+.plot-container img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+}
+
+.plot-column {
+    width: 32%;
+    display: inline-block;
+    vertical-align: top;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+/* Upload area styling */
+.upload-area {
+    width: 100%;
+    height: 60px;
+    line-height: 60px;
+    border-width: 1px;
+    border-style: dashed;
+    border-radius: 5px;
+    text-align: center;
+    margin: 10px 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Sequence output styling */
+.sequence-output {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    font-family: Arial, sans-serif;
+    overflow-x: auto;
+}
+
+/* Motif highlighting */
+.motif-highlight {
+    background-color: yellow;
+    font-weight: bold;
+} 

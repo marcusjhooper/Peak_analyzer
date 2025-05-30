@@ -31,7 +31,7 @@ from data_loading import (
 from plotting import create_contribution_scores_plot, create_plot
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize the Dash app
@@ -54,95 +54,6 @@ app.index_string = '''
         <title>{%title%}</title>
         {%favicon%}
         {%css%}
-        <style>
-            * {
-                font-family: Arial, sans-serif !important;
-            }
-            pre, code {
-                font-family: monospace !important;
-            }
-            .dropdown-compact .Select-control {
-                height: 30px !important;
-                min-height: 30px !important;
-                border-radius: 4px !important;
-                overflow: hidden !important;
-            }
-            .dropdown-compact .Select-value {
-                line-height: 30px !important;
-                padding: 0 8px !important;
-            }
-            .dropdown-compact .Select-placeholder {
-                line-height: 30px !important;
-                padding: 0 8px !important;
-            }
-            .dropdown-compact .Select-input {
-                height: 28px !important;
-                padding: 0 8px !important;
-            }
-            .dropdown-compact .Select-menu-outer {
-                max-height: 200px !important;
-                border-radius: 4px !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            }
-            .dropdown-compact.is-focused .Select-control {
-                height: auto !important;
-                min-height: auto !important;
-                border-color: #80bdff !important;
-                box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25) !important;
-            }
-            .dropdown-compact .Select--multi .Select-value {
-                background-color: #e9ecef !important;
-                border-radius: 3px !important;
-                margin: 2px !important;
-                padding: 0 6px !important;
-                max-width: 150px !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                white-space: nowrap !important;
-            }
-            .dropdown-compact .Select--multi .Select-value-icon {
-                border-right: 1px solid #ced4da !important;
-                padding: 0 4px !important;
-            }
-            .dropdown-compact .Select--multi .Select-value-label {
-                padding: 0 4px !important;
-            }
-            .dropdown-compact .Select-arrow {
-                top: 8px !important;
-            }
-            .dropdown-compact .Select-clear {
-                top: 8px !important;
-            }
-            /* Add a count indicator */
-            .dropdown-compact .Select-multi-value-wrapper {
-                position: relative !important;
-                padding-right: 60px !important;
-            }
-            .dropdown-compact .Select-multi-value-wrapper::after {
-                content: attr(data-count) !important;
-                position: absolute !important;
-                right: 8px !important;
-                top: 50% !important;
-                transform: translateY(-50%) !important;
-                background-color: #e9ecef !important;
-                padding: 2px 6px !important;
-                border-radius: 3px !important;
-                font-size: 12px !important;
-                color: #495057 !important;
-            }
-            /* Hide all but the first selected value when not focused */
-            .dropdown-compact:not(.is-focused) .Select--multi .Select-value:not(:first-child) {
-                display: none !important;
-            }
-            /* Show count when not focused */
-            .dropdown-compact:not(.is-focused) .Select-multi-value-wrapper::after {
-                content: attr(data-count) !important;
-            }
-            /* Hide count when focused */
-            .dropdown-compact.is-focused .Select-multi-value-wrapper::after {
-                display: none !important;
-            }
-        </style>
     </head>
     <body>
         {%app_entry%}
@@ -161,6 +72,29 @@ diff_peaks_df, diff_peaks_columns = load_differential_peaks()
 bigwig_df = scan_for_bigwigs()
 peak_table_options = scan_for_peak_tables()
 
+# Load hierarchy information
+hierarchy_df = pd.read_csv('data/other/AIT21_cldf.csv')
+# Drop duplicates while preserving the first occurrence of each unique combination
+hierarchy_df = hierarchy_df.drop_duplicates(subset=['class_id_label', 'subclass_id_label', 'supertype_label'], keep='first')
+
+# Create hierarchy mappings
+class_to_subclass = hierarchy_df.groupby('class_id_label')['subclass_id_label'].apply(list).to_dict()
+subclass_to_supertype = hierarchy_df.groupby('subclass_id_label')['supertype_label'].apply(list).to_dict()
+
+# Log the hierarchy mappings for debugging
+logger.info("Class to subclass mapping:")
+for class_name, subclasses in class_to_subclass.items():
+    logger.info(f"{class_name}: {subclasses}")
+
+logger.info("Subclass to supertype mapping:")
+for subclass_name, supertypes in subclass_to_supertype.items():
+    logger.info(f"{subclass_name}: {supertypes}")
+
+# Create BigWig file mappings
+class_bigwigs = {row['class_id_label']: f"data/class/{row['class_id_label']}.bw" for _, row in hierarchy_df.drop_duplicates('class_id_label').iterrows()}
+subclass_bigwigs = {row['subclass_id_label']: f"data/subclass/{row['subclass_id_label']}.bw" for _, row in hierarchy_df.drop_duplicates('subclass_id_label').iterrows()}
+supertype_bigwigs = {row['supertype_label']: f"data/supertype/{row['supertype_label']}.bw" for _, row in hierarchy_df.drop_duplicates('supertype_label').iterrows()}
+
 # Load model settings for dropdown
 model_settings_df = pd.read_csv('data/model/model_settings.csv')
 model_options = [{'label': row['model_name'], 'value': row['model_file']} 
@@ -171,7 +105,7 @@ crested_model = None
 
 # Set default font to Arial
 app.layout = html.Div([
-    html.H1('Genomic Data Viewer', style={'fontFamily': 'Arial, sans-serif'}),
+    html.H1('Peak viewer'),
     
     # Tabs
     dcc.Tabs([
@@ -179,14 +113,14 @@ app.layout = html.Div([
         dcc.Tab(label='Genomic Viewer', children=[
             # Differential Peaks Table
             html.Div([
-                html.H2('Differential Peaks', style={'fontFamily': 'Arial, sans-serif'}),
+                html.H2('Differential Peaks'),
                 html.Div([
-                    html.Label('Select Peak Table:', style={'fontFamily': 'Arial, sans-serif'}),
+                    html.Label('Select Peak Table:'),
                     dcc.Dropdown(
                         id='peak-table-dropdown',
                         options=peak_table_options,
                         value=None,
-                        style={'width': '300px', 'marginBottom': '20px', 'fontFamily': 'Arial, sans-serif'}
+                        style={'width': '300px', 'marginBottom': '20px'}
                     ),
                     DataTable(
                         id='peaks-table',
@@ -196,11 +130,7 @@ app.layout = html.Div([
                         filter_action="native",
                         sort_action="native",
                         sort_mode="single",
-                        style_table={
-                            'width': '100%',
-                            'minWidth': '100%',
-                            'overflowX': 'auto'
-                        },
+                        style_table={'width': '100%', 'minWidth': '100%', 'overflowX': 'auto'},
                         style_cell={
                             'textAlign': 'left',
                             'padding': '5px',
@@ -241,29 +171,28 @@ app.layout = html.Div([
                 
                 # BigWig Viewer Controls
                 html.Div([
-                    html.Label('Genomic Coordinates (e.g., chr13:113379626-113380127):', 
-                              style={'fontFamily': 'Arial, sans-serif'}),
+                    html.Label('Genomic Coordinates (e.g., chr13:113379626-113380127):'),
                     dcc.Input(
                         id='coordinates-input',
-                        value='chr13:113379626-113380127',
+                        value='chr19:23980545-23981046',
                         type='text',
-                        style={'width': '300px', 'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}
+                        style={'width': '300px', 'marginRight': '10px'}
                     ),
                     html.Button('Update Plot', id='update-button', n_clicks=0, 
-                               style={'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                               style={'marginRight': '10px'}),
                     html.Button('Zoom Out 1kb', id='zoom-out-1kb', n_clicks=0, 
-                               style={'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                               style={'marginRight': '10px'}),
                     html.Button('Zoom Out 10kb', id='zoom-out-10kb', n_clicks=0, 
-                               style={'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                               style={'marginRight': '10px'}),
                     html.Button('Zoom In 1kb', id='zoom-in-1kb', n_clicks=0, 
-                               style={'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                               style={'marginRight': '10px'}),
                     html.Button('Zoom In 10kb', id='zoom-in-10kb', n_clicks=0, 
-                               style={'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                               style={'marginRight': '10px'}),
                     dcc.Checklist(
                         id='default-zoom',
                         options=[{'label': 'Default zoom out 1kb', 'value': 'zoom_out'}],
                         value=['zoom_out'],
-                        style={'display': 'inline-block', 'marginLeft': '10px', 'fontFamily': 'Arial, sans-serif'}
+                        style={'display': 'inline-block', 'marginLeft': '10px'}
                     )
                 ], style={'marginBottom': '20px'}),
                 
@@ -278,12 +207,11 @@ app.layout = html.Div([
                             dcc.Dropdown(
                                 id='class-dropdown',
                                 options=[
-                                    {'label': f"{row['folder']}/{row['name']}", 'value': row['path']}
-                                    for _, row in bigwig_df[bigwig_df['category'] == 'class'].iterrows()
+                                    {'label': class_name, 'value': class_bigwigs[class_name]}
+                                    for class_name in sorted(class_bigwigs.keys())
                                 ],
-                                value=[row['path'] for _, row in bigwig_df[bigwig_df['category'] == 'class'].iterrows()],
+                                value=[class_bigwigs[class_name] for class_name in sorted(class_bigwigs.keys())],
                                 multi=True,
-                                style={'width': '100%', 'marginBottom': '20px'},
                                 className='dropdown-compact',
                                 searchable=True,
                                 clearable=True,
@@ -297,14 +225,19 @@ app.layout = html.Div([
                         html.Div([
                             html.H3('Subclass', style={'marginBottom': '20px'}),
                             dcc.Dropdown(
-                                id='subclass-dropdown',
+                                id='subclass-class-filter',
                                 options=[
-                                    {'label': f"{row['folder']}/{row['name']}", 'value': row['path']}
-                                    for _, row in bigwig_df[bigwig_df['category'] == 'subclass'].iterrows()
+                                    {'label': class_name, 'value': class_name}
+                                    for class_name in sorted(class_bigwigs.keys())
                                 ],
-                                value=[row['path'] for _, row in bigwig_df[bigwig_df['category'] == 'subclass'].iterrows()],
+                                value=None,
+                                placeholder='Filter by class...',
+                                clearable=True
+                            ),
+                            dcc.Dropdown(
+                                id='subclass-dropdown',
+                                options=[],
                                 multi=True,
-                                style={'width': '100%', 'marginBottom': '20px'},
                                 className='dropdown-compact',
                                 searchable=True,
                                 clearable=True,
@@ -318,14 +251,16 @@ app.layout = html.Div([
                         html.Div([
                             html.H3('Supertype', style={'marginBottom': '20px'}),
                             dcc.Dropdown(
+                                id='supertype-subclass-filter',
+                                options=[],
+                                value=None,
+                                placeholder='Filter by subclass...',
+                                clearable=True
+                            ),
+                            dcc.Dropdown(
                                 id='supertype-dropdown',
-                                options=[
-                                    {'label': f"{row['folder']}/{row['name']}", 'value': row['path']}
-                                    for _, row in bigwig_df[bigwig_df['category'] == 'supertype'].iterrows()
-                                ],
-                                value=[row['path'] for _, row in bigwig_df[bigwig_df['category'] == 'supertype'].iterrows()],
+                                options=[],
                                 multi=True,
-                                style={'width': '100%', 'marginBottom': '20px'},
                                 className='dropdown-compact',
                                 searchable=True,
                                 clearable=True,
@@ -340,18 +275,18 @@ app.layout = html.Div([
                     html.Div([
                         # Class plot
                         html.Div([
-                            html.Img(id='class-plot', style={'width': '100%', 'objectFit': 'contain'})
-                        ], style={'width': '32%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px', 'boxSizing': 'border-box', 'minHeight': '800px', 'display': 'flex', 'alignItems': 'flex-start', 'justifyContent': 'center'}),
+                            html.Img(id='class-plot', className='plot-container')
+                        ], className='plot-column'),
                         
                         # Subclass plot
                         html.Div([
-                            html.Img(id='subclass-plot', style={'width': '100%', 'objectFit': 'contain'})
-                        ], style={'width': '32%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px', 'boxSizing': 'border-box', 'minHeight': '800px', 'display': 'flex', 'alignItems': 'flex-start', 'justifyContent': 'center'}),
+                            html.Img(id='subclass-plot', className='plot-container')
+                        ], className='plot-column'),
                         
                         # Supertype plot
                         html.Div([
-                            html.Img(id='supertype-plot', style={'width': '100%', 'objectFit': 'contain'})
-                        ], style={'width': '32%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px', 'boxSizing': 'border-box', 'minHeight': '800px', 'display': 'flex', 'alignItems': 'flex-start', 'justifyContent': 'center'})
+                            html.Img(id='supertype-plot', className='plot-container')
+                        ], className='plot-column')
                     ], style={'display': 'flex', 'justifyContent': 'space-between'})
                 ], style={'marginTop': '20px', 'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'})
             ], style={'padding': '20px', 'overflowY': 'auto'})
@@ -360,37 +295,34 @@ app.layout = html.Div([
         # Sequence Analysis Tab
         dcc.Tab(label='Sequence Analysis', children=[
             html.Div([
-                html.H2('Sequence Viewer and Analysis', style={'fontFamily': 'Arial, sans-serif'}),
+                html.H2('Sequence Viewer and Analysis'),
                 
                 # Sequence Input Section
                 html.Div([
-                    html.H3('Sequence Input', style={'fontFamily': 'Arial, sans-serif'}),
+                    html.H3('Sequence Input'),
                     html.Div([
                         # Genomic coordinates input
                         html.Div([
-                            html.Label('Genomic Coordinates (e.g., chr13:113379626-113380127):', 
-                                      style={'fontFamily': 'Arial, sans-serif'}),
+                            html.Label('Genomic Coordinates (e.g., chr13:113379626-113380127):'),
                             dcc.Input(
                                 id='sequence-coordinates-input',
-                                value='chr13:113379626-113380127',
+                                value='chr19:23980545-23981046',
                                 type='text',
-                                style={'width': '300px', 'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}
+                                style={'width': '300px', 'marginRight': '10px'}
                             ),
                             html.Button('Get Sequence', id='get-sequence-button', n_clicks=0, 
-                                       style={'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                                       style={'marginRight': '10px'}),
                         ], style={'display': 'inline-block', 'marginRight': '20px'}),
                         
                         # Custom sequence input
                         html.Div([
-                            html.Label('Or Enter Custom Sequence:', 
-                                      style={'fontFamily': 'Arial, sans-serif'}),
+                            html.Label('Or Enter Custom Sequence:'),
                             dcc.Textarea(
                                 id='custom-sequence-input',
                                 placeholder='Enter DNA sequence...',
-                                style={'width': '300px', 'height': '30px', 'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}
+                                style={'width': '300px', 'height': '30px', 'marginRight': '10px'}
                             ),
-                            html.Button('Use Custom Sequence', id='use-custom-sequence-button', n_clicks=0,
-                                      style={'fontFamily': 'Arial, sans-serif'}),
+                            html.Button('Use Custom Sequence', id='use-custom-sequence-button', n_clicks=0),
                         ], style={'display': 'inline-block'}),
                         
                         # Sequence analysis options
@@ -402,63 +334,54 @@ app.layout = html.Div([
                             ],
                             value=[],
                             inline=True,
-                            style={'marginLeft': '10px', 'fontFamily': 'Arial, sans-serif'}
+                            style={'marginLeft': '10px'}
                         ),
                     ], style={'marginBottom': '20px'}),
                     
                     # Motif search input
                     html.Div([
-                        html.Label('Search for motif:', 
-                                  style={'marginRight': '5px', 'fontFamily': 'Arial, sans-serif'}),
+                        html.Label('Search for motif:', style={'marginRight': '5px'}),
                         dcc.Input(id='motif-input', type='text', placeholder='e.g., TATAAA', 
-                                 style={'width': '120px', 'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                                 style={'width': '120px', 'marginRight': '10px'}),
                     ], style={'marginBottom': '20px'}),
                     
-                    html.Div(id='sequence-output', style={
-                        'marginTop': '10px',
-                        'padding': '10px',
-                        'backgroundColor': '#f8f9fa',
-                        'borderRadius': '5px',
-                        'whiteSpace': 'pre-wrap',
-                        'fontFamily': 'Arial, sans-serif',
-                        'overflowX': 'auto'
-                    })
+                    html.Div(id='sequence-output', className='sequence-output')
                 ], style={'marginBottom': '30px'}),
                 
                 # CRESTED Model Section
                 html.Div([
-                    html.H3('CRESTED Model', style={'fontFamily': 'Arial, sans-serif'}),
+                    html.H3('CRESTED Model'),
                     html.Div([
                         # Model selection dropdown
                         html.Div([
-                            html.Label('Select Model:', style={'fontFamily': 'Arial, sans-serif'}),
+                            html.Label('Select Model:'),
                             dcc.Dropdown(
                                 id='model-dropdown',
                                 options=model_options,
                                 value=None,
-                                style={'width': '300px', 'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}
+                                style={'width': '300px', 'marginRight': '10px'}
                             ),
                         ], style={'display': 'inline-block', 'marginRight': '20px'}),
                         
                         # Custom model input
                         html.Div([
-                            html.Label('Or Load Custom Model:', style={'fontFamily': 'Arial, sans-serif'}),
+                            html.Label('Or Load Custom Model:'),
                             dcc.Input(
                                 id='custom-model-path',
                                 type='text',
                                 placeholder='Enter path to custom model',
-                                style={'width': '300px', 'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}
+                                style={'width': '300px', 'marginRight': '10px'}
                             ),
                         ], style={'display': 'inline-block'}),
                         
                         html.Button('Load Model', id='load-model-button', n_clicks=0,
-                                  style={'marginRight': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                                  style={'marginRight': '10px'}),
                     ], style={'marginBottom': '20px'}),
                     
                     # Class selection dropdown
                     html.Div([
                         html.Div([
-                            html.Label('Select Classes to Analyze:', style={'fontFamily': 'Arial, sans-serif'}),
+                            html.Label('Select Classes to Analyze:'),
                             dcc.Checklist(
                                 id='select-all-classes',
                                 options=[{'label': 'Select All', 'value': 'all'}],
@@ -469,12 +392,11 @@ app.layout = html.Div([
                         dcc.Dropdown(
                             id='class-selection-dropdown',
                             multi=True,
-                            style={'width': '100%', 'marginBottom': '20px', 'fontFamily': 'Arial, sans-serif'}
+                            style={'width': '100%', 'marginBottom': '20px'}
                         ),
                     ]),
                     
-                    html.Button('Run Scores', id='run-scores-button', n_clicks=0,
-                              style={'fontFamily': 'Arial, sans-serif'}),
+                    html.Button('Run Scores', id='run-scores-button', n_clicks=0),
                     
                     html.Div(id='model-status', style={'marginBottom': '20px'}),
                     html.Div(id='contribution-scores-plot', style={'marginBottom': '20px'}),
@@ -482,13 +404,13 @@ app.layout = html.Div([
                     # Download button and component
                     html.Div([
                         html.Button('Download Plot', id='download-plot-button', n_clicks=0,
-                                  style={'marginTop': '10px', 'fontFamily': 'Arial, sans-serif'}),
+                                  style={'marginTop': '10px'}),
                         dcc.Download(id='plot-download')
                     ], style={'textAlign': 'center', 'marginTop': '10px'}),
                     
                     # Batch processing section
                     html.Div([
-                        html.H3('Batch Processing', style={'marginTop': '30px', 'fontFamily': 'Arial, sans-serif'}),
+                        html.H3('Batch Processing', style={'marginTop': '30px'}),
                         html.P('Upload a CSV file containing coordinates to process in batch. The CSV should have a column named "coordinates" with values in the format "chr:start-end".'),
                         dcc.Upload(
                             id='batch-coordinates-upload',
@@ -496,22 +418,11 @@ app.layout = html.Div([
                                 'Drag and Drop or ',
                                 html.A('Select CSV File')
                             ]),
-                            style={
-                                'width': '100%',
-                                'height': '60px',
-                                'lineHeight': '60px',
-                                'borderWidth': '1px',
-                                'borderStyle': 'dashed',
-                                'borderRadius': '5px',
-                                'textAlign': 'center',
-                                'margin': '10px 0',
-                                'fontFamily': 'Arial, sans-serif'
-                            },
+                            className='upload-area',
                             multiple=False
                         ),
                         html.Div(id='batch-upload-status', style={'marginBottom': '10px'}),
-                        html.Button('Run Scores Batch', id='run-batch-button', n_clicks=0,
-                                  style={'fontFamily': 'Arial, sans-serif'}),
+                        html.Button('Run Scores Batch', id='run-batch-button', n_clicks=0),
                         html.Div(id='batch-processing-status', style={'marginTop': '10px'}),
                         dcc.Download(id='batch-download')
                     ], style={'marginTop': '20px', 'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'})
@@ -555,13 +466,13 @@ def load_crested_model(n_clicks, selected_model, custom_model_path):
         crested_model.settings = model_settings
         
         return html.Div([
-            html.P("Model loaded successfully!", style={'color': 'green'}),
+            html.P("Model loaded successfully!"),
             html.P(f"Model path: {model_path}"),
             html.P(f"Model settings: {model_settings}")
         ]), False
     except Exception as e:
         return html.Div([
-            html.P("Error loading model:", style={'color': 'red'}),
+            html.P("Error loading model:"),
             html.P(str(e))
         ]), True
 
@@ -739,7 +650,7 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes):
         error_msg = f"Error running contribution scores: {str(e)}"
         logger.error(error_msg)
         return html.Div([
-            html.P("Error running contribution scores:", style={'color': 'red'}),
+            html.P("Error running contribution scores:"),
             html.P(str(e))
         ])
 
@@ -797,18 +708,23 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
     # Get the context to determine which input triggered the callback
     ctx = dash.callback_context
     if not ctx.triggered:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+        # On initial load, use the default coordinates with default zoom
+        default_coords = 'chr19:23980545-23981046'
+        zoom_level = -1000  # Default zoom out 1kb
+        class_plot = create_plot(class_files, default_coords, zoom_level, default_coords, cell_type_colors)
+        subclass_plot = create_plot(subclass_files, default_coords, zoom_level, default_coords, cell_type_colors)
+        supertype_plot = create_plot(supertype_files, default_coords, zoom_level, default_coords, cell_type_colors)
+        return default_coords, default_coords, class_plot, subclass_plot, supertype_plot, []
     
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    logger.debug(f"Triggered by: {trigger_id}")
     
     # Initialize coordinates and zoom level
     new_coords = current_coords
     selected_row = None
     zoom_level = 0
     
-    # Apply default zoom if checkbox is checked
-    if 'zoom_out' in default_zoom and trigger_id in ['peaks-table', 'update-button']:
+    # Apply default zoom if checkbox is checked - now applies to all input types
+    if 'zoom_out' in default_zoom:
         zoom_level = -1000
     
     # Handle zoom controls
@@ -829,32 +745,19 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
         
         # Determine which data to use based on whether the table is filtered
         if derived_virtual_data:
-            # Table is filtered, use derived_virtual_data
             data_to_use = derived_virtual_data
-            # Calculate the actual row index in the filtered view
             actual_row_idx = row_idx + (page_current * page_size)
-            logger.debug("Using filtered data (derived_virtual_data)")
         else:
-            # Table is not filtered, use table_data
             data_to_use = table_data
-            # Calculate the actual row index in the full dataset
             actual_row_idx = row_idx + (page_current * page_size)
-            logger.debug("Using unfiltered data (table_data)")
         
         # Get the coordinates from the 'coordinates' column of the selected row
         if actual_row_idx < len(data_to_use):
             row_data = data_to_use[actual_row_idx]
             if 'coordinates' in row_data:
                 coord_value = row_data['coordinates']
-                logger.debug(f"Coordinates from row: {coord_value}")
-                logger.debug(f"Page current: {page_current}, Page size: {page_size}")
-                logger.debug(f"Row index in current view: {row_idx}, Actual row index: {actual_row_idx}")
-                logger.debug(f"Data length: {len(data_to_use)}")
-                
                 if isinstance(coord_value, str) and re.match(r'[^:]+:\d+-\d+', coord_value):
                     new_coords = coord_value
-                    logger.debug(f"Found valid coordinates: {new_coords}")
-                    # Set the selected row to the current row index in the current view
                     selected_row = [row_idx]
                 else:
                     logger.warning(f"Invalid coordinate format: {coord_value}")
@@ -870,11 +773,6 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
     class_plot = create_plot(class_files, new_coords, zoom_level, original_coords, cell_type_colors)
     subclass_plot = create_plot(subclass_files, new_coords, zoom_level, original_coords, cell_type_colors)
     supertype_plot = create_plot(supertype_files, new_coords, zoom_level, original_coords, cell_type_colors)
-    
-    # Log the final coordinates being used
-    logger.debug(f"Final coordinates: {new_coords}")
-    logger.debug(f"Original coordinates: {original_coords}")
-    logger.debug(f"Selected row index: {selected_row}")
     
     return new_coords, new_coords, class_plot, subclass_plot, supertype_plot, selected_row if selected_row else dash.no_update
 
@@ -1136,8 +1034,6 @@ def process_batch(n_clicks, contents, selected_classes):
         
         # Create a temporary directory for the plots
         with tempfile.TemporaryDirectory() as temp_dir:
-            logger.info(f"Created temporary directory: {temp_dir}")
-            
             # Get model settings
             model_settings = getattr(crested_model, 'settings', {
                 'sequence_length': 1500,
@@ -1151,14 +1047,11 @@ def process_batch(n_clicks, contents, selected_classes):
             # Filter class labels based on selected classes
             if selected_classes is not None and len(selected_classes) > 0:
                 class_labels = [class_labels[i] for i in selected_classes]
-            logger.info(f"Using class labels: {class_labels}")
             
             # Process each coordinate
             for i, row in df.iterrows():
                 coordinates = row['coordinates']
                 try:
-                    logger.info(f"Processing coordinates: {coordinates}")
-                    
                     # Get the sequence
                     chrom, start, end = parse_coordinates(coordinates)
                     
@@ -1199,14 +1092,11 @@ def process_batch(n_clicks, contents, selected_classes):
                     # Save the plot
                     clean_coords = coordinates.replace(':', '_').replace('-', '_')
                     plot_path = os.path.join(temp_dir, f'contribution_scores_{clean_coords}.png')
-                    logger.info(f"Saving plot to: {plot_path}")
                     
                     # Ensure the plot bytes are valid before saving
                     if plot_bytes and len(plot_bytes) > 0:
                         with open(plot_path, 'wb') as f:
                             f.write(plot_bytes)
-                        logger.info(f"Successfully saved plot for coordinates: {coordinates}")
-                        logger.info(f"Plot file size: {os.path.getsize(plot_path)} bytes")
                     else:
                         logger.error(f"Invalid plot bytes for coordinates: {coordinates}")
                         continue
@@ -1217,20 +1107,17 @@ def process_batch(n_clicks, contents, selected_classes):
             
             # Create a zip file of all plots
             zip_path = os.path.join(temp_dir, 'contribution_scores_batch.zip')
-            logger.info(f"Creating zip file at: {zip_path}")
             
             with zipfile.ZipFile(zip_path, 'w') as zipf:
                 for root, dirs, files in os.walk(temp_dir):
                     for file in files:
                         if file.endswith('.png'):
                             file_path = os.path.join(root, file)
-                            logger.info(f"Adding file to zip: {file_path}")
                             zipf.write(file_path, os.path.basename(file_path))
             
             # Read the zip file
             with open(zip_path, 'rb') as f:
                 zip_bytes = f.read()
-            logger.info(f"Zip file size: {len(zip_bytes)} bytes")
             
             return html.Div([
                 html.P("Batch processing completed successfully!"),
@@ -1283,6 +1170,121 @@ def update_supertype_dropdown_style(selected_values):
         'marginBottom': '20px',
         '--select-count': f'"{count} selected"'
     }
+
+@callback(
+    [Output('subclass-dropdown', 'options'),
+     Output('subclass-dropdown', 'value')],
+    [Input('subclass-class-filter', 'value')]
+)
+def update_subclass_options(selected_class):
+    logger.info(f"Selected class for subclass filter: {selected_class}")
+    
+    # Always show all available subclasses in the options
+    options = [
+        {'label': subclass, 'value': subclass_bigwigs[subclass]}
+        for subclass in sorted(subclass_bigwigs.keys())
+    ]
+    
+    if not selected_class:
+        # If no class is selected, don't pre-select any subclasses
+        logger.info(f"No class selected, showing all subclasses without pre-selection")
+        return options, []
+    
+    # Pre-select subclasses for the selected class
+    available_subclasses = class_to_subclass.get(selected_class, [])
+    logger.info(f"Available subclasses for {selected_class}: {available_subclasses}")
+    
+    if not available_subclasses:
+        logger.warning(f"No subclasses found for class: {selected_class}")
+        return options, []
+    
+    # Pre-select the subclasses for the selected class, ensuring no duplicates
+    selected_values = []
+    seen_values = set()
+    for subclass in sorted(available_subclasses):
+        if subclass in subclass_bigwigs:
+            value = subclass_bigwigs[subclass]
+            if value not in seen_values:
+                selected_values.append(value)
+                seen_values.add(value)
+    
+    logger.info(f"Pre-selected {len(selected_values)} unique subclasses")
+    logger.info(f"Selected values: {selected_values}")
+    return options, selected_values
+
+@callback(
+    [Output('supertype-subclass-filter', 'options'),
+     Output('supertype-dropdown', 'options'),
+     Output('supertype-dropdown', 'value')],
+    [Input('subclass-class-filter', 'value'),
+     Input('supertype-subclass-filter', 'value')]
+)
+def update_supertype_options(selected_class, selected_subclass):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return dash.no_update, dash.no_update, dash.no_update
+    
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    logger.info(f"Supertype callback triggered by: {trigger_id}")
+    
+    # Always show all available supertypes in the options
+    supertype_options = [
+        {'label': supertype, 'value': supertype_bigwigs[supertype]}
+        for supertype in sorted(supertype_bigwigs.keys())
+    ]
+    
+    if trigger_id == 'subclass-class-filter':
+        logger.info(f"Updating supertype options based on class: {selected_class}")
+        if not selected_class:
+            # If no class is selected, show all subclasses in the filter but don't select any
+            subclass_options = [
+                {'label': subclass, 'value': subclass}
+                for subclass in sorted(subclass_bigwigs.keys())
+            ]
+            return subclass_options, supertype_options, []
+        else:
+            # Show only subclasses for the selected class in the filter
+            available_subclasses = class_to_subclass.get(selected_class, [])
+            subclass_options = [
+                {'label': subclass, 'value': subclass}
+                for subclass in sorted(available_subclasses)
+            ]
+            # Don't pre-select any supertypes when class is selected
+            return subclass_options, supertype_options, []
+    
+    else:  # trigger_id == 'supertype-subclass-filter'
+        logger.info(f"Updating supertype options based on subclass: {selected_subclass}")
+        if not selected_subclass:
+            # If no subclass is selected, don't pre-select any supertypes
+            return dash.no_update, supertype_options, []
+        else:
+            # Pre-select supertypes for the selected subclass
+            available_supertypes = subclass_to_supertype.get(selected_subclass, [])
+            
+            # Ensure no duplicate selections
+            selected_values = []
+            seen_values = set()
+            for supertype in sorted(available_supertypes):
+                if supertype in supertype_bigwigs:
+                    value = supertype_bigwigs[supertype]
+                    if value not in seen_values:
+                        selected_values.append(value)
+                        seen_values.add(value)
+            
+            logger.info(f"Pre-selected {len(selected_values)} unique supertypes")
+            return dash.no_update, supertype_options, selected_values
+
+@callback(
+    Output('class-dropdown', 'options'),
+    [Input('class-dropdown', 'value')]
+)
+def update_class_options(selected_values):
+    # Create options for all classes
+    options = [
+        {'label': class_name, 'value': class_bigwigs[class_name]}
+        for class_name in sorted(class_bigwigs.keys())
+    ]
+    return options
 
 if __name__ == '__main__':
     app.run(debug=True)
