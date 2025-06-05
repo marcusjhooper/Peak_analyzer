@@ -19,6 +19,11 @@ import zipfile
 import tempfile
 matplotlib.use('Agg')  # Set the backend to Agg for non-interactive plotting
 
+
+###for use on molgen shiny (rsconnect):
+
+
+
 # Import our modules
 from utils import parse_coordinates, get_sequence, format_sequence_with_line_numbers, highlight_motif, calculate_gc_content, reverse_complement
 from data_loading import (
@@ -35,7 +40,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize the Dash app
-app = dash.Dash(__name__, suppress_callback_exceptions=True)
+#local
+#app = dash.Dash(__name__, suppress_callback_exceptions=True) 
+# Set the data directory
+
+
+#DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
+DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
+
+# isilon
+app = dash.Dash(__name__, 
+                suppress_callback_exceptions=True,
+                assets_folder='assets')  # Change back to 'assets' folder for CSS
+
+
 
 # Register CRESTED custom objects
 custom_objects = {
@@ -73,7 +91,7 @@ bigwig_df = scan_for_bigwigs()
 peak_table_options = scan_for_peak_tables()
 
 # Load hierarchy information
-hierarchy_df = pd.read_csv('data/other/AIT21_cldf.csv')
+hierarchy_df = pd.read_csv(os.path.join(DATA_DIR, 'other/AIT21_cldf.csv'))
 # Drop duplicates while preserving the first occurrence of each unique combination
 hierarchy_df = hierarchy_df.drop_duplicates(subset=['class_id_label', 'subclass_id_label', 'supertype_label'], keep='first')
 
@@ -91,14 +109,57 @@ for subclass_name, supertypes in subclass_to_supertype.items():
     logger.info(f"{subclass_name}: {supertypes}")
 
 # Create BigWig file mappings
-class_bigwigs = {row['class_id_label']: f"data/class/{row['class_id_label']}.bw" for _, row in hierarchy_df.drop_duplicates('class_id_label').iterrows()}
-subclass_bigwigs = {row['subclass_id_label']: f"data/subclass/{row['subclass_id_label']}.bw" for _, row in hierarchy_df.drop_duplicates('subclass_id_label').iterrows()}
-supertype_bigwigs = {row['supertype_label']: f"data/supertype/{row['supertype_label']}.bw" for _, row in hierarchy_df.drop_duplicates('supertype_label').iterrows()}
+class_bigwigs = {
+    row['class_id_label']: {
+        'file': os.path.join(DATA_DIR, f"class/{row['class_id_label']}.bw"),
+        'url': f"/assets/class/{row['class_id_label']}.bw"
+    } for _, row in hierarchy_df.drop_duplicates('class_id_label').iterrows()
+}
+
+subclass_bigwigs = {
+    row['subclass_id_label']: {
+        'file': os.path.join(DATA_DIR, f"subclass/{row['subclass_id_label']}.bw"),
+        'url': f"/assets/subclass/{row['subclass_id_label']}.bw"
+    } for _, row in hierarchy_df.drop_duplicates('subclass_id_label').iterrows()
+}
+
+supertype_bigwigs = {
+    row['supertype_label']: {
+        'file': os.path.join(DATA_DIR, f"supertype/{row['supertype_label']}.bw"),
+        'url': f"/assets/supertype/{row['supertype_label']}.bw"
+    } for _, row in hierarchy_df.drop_duplicates('supertype_label').iterrows()
+}
+
+# Create dropdown options
+class_options = [
+    {'label': class_name, 'value': class_bigwigs[class_name]['url']}
+    for class_name in sorted(class_bigwigs.keys())
+]
+
+subclass_options = [
+    {'label': subclass, 'value': subclass_bigwigs[subclass]['url']}
+    for subclass in sorted(subclass_bigwigs.keys())
+]
+
+supertype_options = [
+    {'label': supertype, 'value': supertype_bigwigs[supertype]['url']}
+    for supertype in sorted(supertype_bigwigs.keys())
+]
 
 # Load model settings for dropdown
-model_settings_df = pd.read_csv('data/model/model_settings.csv')
-model_options = [{'label': row['model_name'], 'value': row['model_file']} 
-                for _, row in model_settings_df.iterrows()]
+model_settings_df = pd.read_csv(os.path.join(DATA_DIR, 'model/model_settings.csv'))
+logger.info(f"Loaded model settings from: {os.path.join(DATA_DIR, 'model/model_settings.csv')}")
+logger.info(f"Found {len(model_settings_df)} models in settings file")
+
+model_options = []
+for _, row in model_settings_df.iterrows():
+    # Convert relative path to absolute path
+    model_path = os.path.join(DATA_DIR, row['model_file'].replace('./data/', ''))
+    logger.info(f"Adding model option: {row['model_name']} -> {model_path}")
+    model_options.append({
+        'label': row['model_name'],
+        'value': model_path
+    })
 
 # Add CRESTED model state
 crested_model = None
@@ -206,11 +267,8 @@ app.layout = html.Div([
                             html.H3('Class', style={'marginBottom': '20px'}),
                             dcc.Dropdown(
                                 id='class-dropdown',
-                                options=[
-                                    {'label': class_name, 'value': class_bigwigs[class_name]}
-                                    for class_name in sorted(class_bigwigs.keys())
-                                ],
-                                value=[class_bigwigs[class_name] for class_name in sorted(class_bigwigs.keys())],
+                                options=class_options,
+                                value=[class_bigwigs[class_name]['url'] for class_name in sorted(class_bigwigs.keys())],
                                 multi=True,
                                 className='dropdown-compact',
                                 searchable=True,
@@ -236,7 +294,7 @@ app.layout = html.Div([
                             ),
                             dcc.Dropdown(
                                 id='subclass-dropdown',
-                                options=[],
+                                options=subclass_options,
                                 multi=True,
                                 className='dropdown-compact',
                                 searchable=True,
@@ -252,14 +310,14 @@ app.layout = html.Div([
                             html.H3('Supertype', style={'marginBottom': '20px'}),
                             dcc.Dropdown(
                                 id='supertype-subclass-filter',
-                                options=[],
+                                options=supertype_options,
                                 value=None,
                                 placeholder='Filter by subclass...',
                                 clearable=True
                             ),
                             dcc.Dropdown(
                                 id='supertype-dropdown',
-                                options=[],
+                                options=supertype_options,
                                 multi=True,
                                 className='dropdown-compact',
                                 searchable=True,
@@ -456,10 +514,20 @@ def load_crested_model(n_clicks, selected_model, custom_model_path):
         if not model_path:
             return "Please select a model or provide a custom model path", True
         
+        logger.info(f"Attempting to load model from path: {model_path}")
+        if not os.path.exists(model_path):
+            logger.error(f"Model file not found at path: {model_path}")
+            return html.Div([
+                html.P("Error loading model:"),
+                html.P(f"Model file not found at: {model_path}")
+            ]), True
+        
         # Load model settings
-        model_settings = load_model_settings(model_path)
+        logger.info(f"Loading model settings for: {model_path}")
+        model_settings = load_model_settings(model_path, DATA_DIR)
         
         # Load the model using keras with custom objects
+        logger.info("Loading model with keras...")
         crested_model = keras.models.load_model(model_path, custom_objects=custom_objects)
         
         # Store model settings in the model object
@@ -471,6 +539,7 @@ def load_crested_model(n_clicks, selected_model, custom_model_path):
             html.P(f"Model settings: {model_settings}")
         ]), False
     except Exception as e:
+        logger.error(f"Error loading model: {str(e)}")
         return html.Div([
             html.P("Error loading model:"),
             html.P(str(e))
@@ -537,7 +606,7 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes):
         new_end = center + half_length
         
         # Define genome path and check if it exists
-        genome_path = 'data/genome/mm10.fa'
+        genome_path = os.path.join(DATA_DIR, 'genome/mm10.fa')
         if not os.path.exists(genome_path):
             raise FileNotFoundError(f"Genome file not found at {genome_path}")
         
@@ -711,9 +780,15 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
         # On initial load, use the default coordinates with default zoom
         default_coords = 'chr19:23980545-23981046'
         zoom_level = -1000  # Default zoom out 1kb
-        class_plot = create_plot(class_files, default_coords, zoom_level, default_coords, cell_type_colors)
-        subclass_plot = create_plot(subclass_files, default_coords, zoom_level, default_coords, cell_type_colors)
-        supertype_plot = create_plot(supertype_files, default_coords, zoom_level, default_coords, cell_type_colors)
+        
+        # Convert URLs to file paths
+        class_file_paths = [class_bigwigs[class_name]['file'] for class_name in sorted(class_bigwigs.keys())]
+        subclass_file_paths = [subclass_bigwigs[subclass]['file'] for subclass in sorted(subclass_bigwigs.keys())]
+        supertype_file_paths = [supertype_bigwigs[supertype]['file'] for supertype in sorted(supertype_bigwigs.keys())]
+        
+        class_plot = create_plot(class_file_paths, default_coords, zoom_level, default_coords, cell_type_colors)
+        subclass_plot = create_plot(subclass_file_paths, default_coords, zoom_level, default_coords, cell_type_colors)
+        supertype_plot = create_plot(supertype_file_paths, default_coords, zoom_level, default_coords, cell_type_colors)
         return default_coords, default_coords, class_plot, subclass_plot, supertype_plot, []
     
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -766,13 +841,35 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
         else:
             logger.warning(f"Row index {actual_row_idx} out of range for data length {len(data_to_use)}")
     
-    # Store the original coordinates before applying zoom
-    original_coords = new_coords
+    # Convert URLs to file paths
+    class_file_paths = []
+    if class_files:
+        for url in class_files:
+            # Find the class name from the URL
+            class_name = next((name for name, data in class_bigwigs.items() if data['url'] == url), None)
+            if class_name:
+                class_file_paths.append(class_bigwigs[class_name]['file'])
+    
+    subclass_file_paths = []
+    if subclass_files:
+        for url in subclass_files:
+            # Find the subclass name from the URL
+            subclass_name = next((name for name, data in subclass_bigwigs.items() if data['url'] == url), None)
+            if subclass_name:
+                subclass_file_paths.append(subclass_bigwigs[subclass_name]['file'])
+    
+    supertype_file_paths = []
+    if supertype_files:
+        for url in supertype_files:
+            # Find the supertype name from the URL
+            supertype_name = next((name for name, data in supertype_bigwigs.items() if data['url'] == url), None)
+            if supertype_name:
+                supertype_file_paths.append(supertype_bigwigs[supertype_name]['file'])
     
     # Create plots for each category
-    class_plot = create_plot(class_files, new_coords, zoom_level, original_coords, cell_type_colors)
-    subclass_plot = create_plot(subclass_files, new_coords, zoom_level, original_coords, cell_type_colors)
-    supertype_plot = create_plot(supertype_files, new_coords, zoom_level, original_coords, cell_type_colors)
+    class_plot = create_plot(class_file_paths, new_coords, zoom_level, new_coords, cell_type_colors)
+    subclass_plot = create_plot(subclass_file_paths, new_coords, zoom_level, new_coords, cell_type_colors)
+    supertype_plot = create_plot(supertype_file_paths, new_coords, zoom_level, new_coords, cell_type_colors)
     
     return new_coords, new_coords, class_plot, subclass_plot, supertype_plot, selected_row if selected_row else dash.no_update
 
@@ -850,7 +947,7 @@ def get_sequence(get_clicks, custom_clicks, motif, coordinates, custom_sequence,
             chrom, start, end = parse_coordinates(coordinates)
             
             # Load mm10 genome from gzipped file
-            genome = Fasta('data/genome/mm10.fa')
+            genome = Fasta(os.path.join(DATA_DIR, 'genome/mm10.fa'))
             
             # Get sequence
             sequence = genome[chrom][start:end]
@@ -1062,7 +1159,7 @@ def process_batch(n_clicks, contents, selected_classes):
                     new_end = center + half_length
                     
                     # Get the sequence
-                    genome = Fasta('data/genome/mm10.fa')
+                    genome = Fasta(os.path.join(DATA_DIR, 'genome/mm10.fa'))
                     sequence = genome[chrom][new_start:new_end]
                     seq_str = str(sequence.seq).upper()
                     
@@ -1070,7 +1167,7 @@ def process_batch(n_clicks, contents, selected_classes):
                     scores, one_hot_encoded_sequences = crested.tl.contribution_scores(
                         input=seq_str,
                         target_idx=selected_classes if selected_classes else list(range(crested_model.output_shape[1])),
-                        genome='data/genome/mm10.fa',
+                        genome=os.path.join(DATA_DIR, 'genome/mm10.fa'),
                         model=crested_model,
                         batch_size=model_settings['batch_size']
                     )
@@ -1181,7 +1278,7 @@ def update_subclass_options(selected_class):
     
     # Always show all available subclasses in the options
     options = [
-        {'label': subclass, 'value': subclass_bigwigs[subclass]}
+        {'label': subclass, 'value': subclass_bigwigs[subclass]['url']}
         for subclass in sorted(subclass_bigwigs.keys())
     ]
     
@@ -1203,7 +1300,7 @@ def update_subclass_options(selected_class):
     seen_values = set()
     for subclass in sorted(available_subclasses):
         if subclass in subclass_bigwigs:
-            value = subclass_bigwigs[subclass]
+            value = subclass_bigwigs[subclass]['url']
             if value not in seen_values:
                 selected_values.append(value)
                 seen_values.add(value)
@@ -1229,19 +1326,19 @@ def update_supertype_options(selected_class, selected_subclass):
     
     # Always show all available supertypes in the options
     supertype_options = [
-        {'label': supertype, 'value': supertype_bigwigs[supertype]}
+        {'label': supertype, 'value': supertype_bigwigs[supertype]['url']}
         for supertype in sorted(supertype_bigwigs.keys())
     ]
     
     if trigger_id == 'subclass-class-filter':
         logger.info(f"Updating supertype options based on class: {selected_class}")
         if not selected_class:
-            # If no class is selected, show all subclasses in the filter but don't select any
-            subclass_options = [
-                {'label': subclass, 'value': subclass}
-                for subclass in sorted(subclass_bigwigs.keys())
+            # If no class is selected, show all classes in the filter but don't select any
+            class_options = [
+                {'label': class_name, 'value': class_name}
+                for class_name in sorted(class_bigwigs.keys())
             ]
-            return subclass_options, supertype_options, []
+            return class_options, supertype_options, []
         else:
             # Show only subclasses for the selected class in the filter
             available_subclasses = class_to_subclass.get(selected_class, [])
@@ -1266,7 +1363,7 @@ def update_supertype_options(selected_class, selected_subclass):
             seen_values = set()
             for supertype in sorted(available_supertypes):
                 if supertype in supertype_bigwigs:
-                    value = supertype_bigwigs[supertype]
+                    value = supertype_bigwigs[supertype]['url']
                     if value not in seen_values:
                         selected_values.append(value)
                         seen_values.add(value)
@@ -1281,7 +1378,7 @@ def update_supertype_options(selected_class, selected_subclass):
 def update_class_options(selected_values):
     # Create options for all classes
     options = [
-        {'label': class_name, 'value': class_bigwigs[class_name]}
+        {'label': class_name, 'value': class_bigwigs[class_name]['url']}
         for class_name in sorted(class_bigwigs.keys())
     ]
     return options

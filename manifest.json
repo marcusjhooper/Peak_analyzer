@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "locale": "en_CA.UTF-8",
+  "metadata": {
+    "appmode": "python-dash",
+    "entrypoint": "app"
+  },
+  "python": {
+    "version": "3.9.19",
+    "package_manager": {
+      "name": "pip",
+      "version": "23.3.1",
+      "package_file": "requirements.txt"
+    }
+  },
+  "files": {
+    "requirements.txt": {
+      "checksum": "d188a5bdc2758dcdeb430895039dd91f"
+    },
+    "1.11.0": {
+      "checksum": "fd7daacea3b84987a6eac0e7f640fe93"
+    },
+    "=1.11.0": {
+      "checksum": "a904a3b0b36db7bf6911009ca842eb52"
+    },
+    "DEPLOY.md": {
+      "checksum": "dc12fa5ac49358ffb91960b071249ea2"
+    },
+    "README.md": {
+      "checksum": "613f84896c3f6dc0ddbee52714a7f5a8"
+    },
+    "app.py": {
+      "checksum": "886c45130b8586a0b700cf5a9c607fc6"
+    },
+    "assets/styles.css": {
+      "checksum": "4169e23bfc428b170349b74bd9ebaef6"
+    },
+    "data_loading.py": {
+      "checksum": "2f7bcd2c989f9b32880ef0abfa20af3c"
+    },
+    "plotting.py": {
+      "checksum": "37530cfeff2b00059c76b8240ade617d"
+    },
+    "utils.py": {
+      "checksum": "5a4f8379dbc5877fb44736e70c3981d9"
+    }
+  }
+}

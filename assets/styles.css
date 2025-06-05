@@ -134,12 +134,15 @@ pre, code {
     align-items: flex-start;
     justify-content: center;
     overflow-y: auto;
+    margin-bottom: 20px;
 }
 
 .plot-container img {
     width: auto;
     height: auto;
     max-width: 100%;
+    display: block;
+    margin: 0 auto;
 }
 
 .plot-column {
@@ -149,6 +152,7 @@ pre, code {
     padding: 10px;
     box-sizing: border-box;
     overflow-y: auto;
+    min-height: 400px;
 }
 
 /* Upload area styling */

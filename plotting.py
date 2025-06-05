@@ -15,17 +15,22 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
     """Create a plot from BigWig files."""
     try:
         if not selected_files:
+            logger.warning("No files selected for plotting")
             return None
             
+        # Sort files by filename
+        selected_files = sorted(selected_files, key=lambda x: os.path.basename(x))
         
         # Parse coordinates
         chrom, start, end = parse_coordinates(coords)
+        logger.info(f"Creating plot for coordinates: {chrom}:{start}-{end}")
         
         # Parse original coordinates if provided
         original_start = None
         original_end = None
         if original_coords:
             _, original_start, original_end = parse_coordinates(original_coords)
+            logger.info(f"Original coordinates: {original_start}-{original_end}")
         
         # Adjust coordinates based on zoom level
         if zoom_level != 0:
@@ -39,10 +44,16 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
                 half_width = half_width + abs(zoom_level)
             start = center - half_width
             end = center + half_width
+            logger.info(f"Adjusted coordinates after zoom: {start}-{end}")
         
         # First pass: get the maximum value across all files using the original coordinates
         max_value = 0
+        valid_files = []
         for file_path in selected_files:
+            if not os.path.exists(file_path):
+                logger.error(f"File does not exist: {file_path}")
+                continue
+                
             try:
                 bw = pyBigWig.open(file_path)
                 # Use original coordinates if available, otherwise use current coordinates
@@ -53,33 +64,38 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
                 if values:
                     current_max = max(v for v in values if v is not None)
                     max_value = max(max_value, current_max)
+                    valid_files.append(file_path)
                 bw.close()
             except Exception as e:
                 logger.error(f"Error getting max value from {file_path}: {str(e)}")
                 continue
         
+        if not valid_files:
+            logger.error("No valid files found to plot")
+            return None
+            
         # Add 10% padding to the max value
         max_value = max_value * 1.1
         
         # Create the figure with stacked subplots
         fig, axes = plt.subplots(
-            len(selected_files), 1,
-            figsize=(12, 0.5 * len(selected_files)),  # Reduced height from 2 to 1 unit per plot
+            len(valid_files), 1,
+            figsize=(12, 0.5 * len(valid_files)),
             sharex=True,
-            gridspec_kw={'height_ratios': [1] * len(selected_files), 'hspace': 0.2}  # Reduced spacing between plots
+            gridspec_kw={'height_ratios': [1] * len(valid_files), 'hspace': 0.2}
         )
         
         # If there's only one subplot, make it a list for consistency
-        if len(selected_files) == 1:
+        if len(valid_files) == 1:
             axes = [axes]
         
         # Plot each selected bigwig file
-        for i, (file_path, ax) in enumerate(zip(selected_files, axes)):
+        for i, (file_path, ax) in enumerate(zip(valid_files, axes)):
             try:
                 # Get the file name and cell type
                 file_name = os.path.basename(file_path)
                 cell_type = file_name.replace('.bw', '')
-                logger.debug(f"Processing file: {file_name}, cell type: '{cell_type}'")
+                logger.info(f"Processing file: {file_name}, cell type: '{cell_type}'")
                 
                 # Get the color for this cell type
                 color = cell_type_colors.get(cell_type) if cell_type_colors else None
@@ -116,7 +132,7 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
                 # Add label to top left of the plot
                 ax.text(0.02, 0.95, cell_type, 
                        transform=ax.transAxes,
-                       fontsize=8,  # Reduced font size to match smaller plot
+                       fontsize=8,
                        verticalalignment='top',
                        bbox=dict(boxstyle='round,pad=0.5', 
                                 fc='white', 
@@ -144,9 +160,6 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
             except Exception as e:
                 logger.error(f"Error processing file {file_path}: {str(e)}")
                 continue
-        
-        # Add a title with the coordinates
-        #plt.suptitle(f'{chrom}:{start}-{end}', fontsize=10)  # Reduced title font size
         
         # Adjust layout to prevent label overlap
         plt.tight_layout()

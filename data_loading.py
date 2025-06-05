@@ -149,69 +149,52 @@ def load_differential_peaks(table_path=None):
         logger.error(f"Error loading differential peaks: {str(e)}")
         return pd.DataFrame(), []
 
-def load_model_settings(model_path):
-    """Load model-specific settings from CSV file.
-    
-    Args:
-        model_path (str): Path to the model file
-        
-    Returns:
-        dict: Dictionary containing model settings
-    """
+def load_model_settings(model_path, data_dir):
+    """Load model settings from model_settings.csv."""
     try:
-        # Check if model settings file exists
-        settings_path = 'data/model/model_settings.csv'
-        if not os.path.exists(settings_path):
-            logger.warning(f"Model settings file not found at {settings_path}, using default settings")
-            return {
-                'sequence_length': 1500,
-                'batch_size': 128,
-                'zoom_n_bases': 500
-            }
-        
-        # Read the settings file
-        settings_df = pd.read_csv(settings_path)
-        
-        # Extract model name from path (remove .keras extension if present)
-        model_name = os.path.basename(model_path)
-        if model_name.endswith('.keras'):
-            model_name = model_name[:-6]  # Remove .keras extension
-        
+        # Extract model name from path
+        model_name = os.path.basename(model_path).replace('.keras', '')
         logger.info(f"Looking for settings for model: {model_name}")
         
-        # Find settings for this model
+        # Load model settings
+        settings_path = os.path.join(data_dir, 'model/model_settings.csv')
+        if not os.path.exists(settings_path):
+            raise FileNotFoundError(f"Model settings file not found at {settings_path}")
+        
+        settings_df = pd.read_csv(settings_path)
+        
+        # First try to find settings by model name
         model_settings = settings_df[settings_df['model_name'] == model_name]
+        
+        # If not found, try to find settings by model file
+        if model_settings.empty:
+            model_settings = settings_df[settings_df['model_file'].str.contains(model_name)]
         
         if model_settings.empty:
             logger.warning(f"No settings found for model {model_name}, using default settings")
-            model_settings = settings_df[settings_df['model_name'] == 'default']
-            if model_settings.empty:
-                raise ValueError("No default settings found in model_settings.csv")
+            # Use default settings based on model name
+            if 'class_22' in model_name:
+                return {
+                    'batch_size': 8,
+                    'sequence_length': 2000,
+                    'zoom_n_bases': 500,
+                    'indexed_class_labels': ['Astro_Epen', 'CB_GABA', 'CB_Glut', 'CNU_HYa_GABA', 'CNU_HYa_Glut', 'CNU_LGE_GABA', 'CNU_MGE_GABA', 'CTX_CGE_GABA', 'CTX_MGE_GABA', 'DG_IMN_Glut', 'HY_GABA', 'HY_Glut', 'HY_Gnrh1_Glut', 'HY_MM_Glut', 'IT_ET_Glut', 'Immune', 'LSX_GABA', 'MB_Dopa', 'MB_GABA', 'MB_Glut', 'MB_HB_Sero', 'MH_LH_Glut', 'MY_GABA', 'MY_Glut', 'NP_CT_L6b_Glut', 'OB_CR_Glut', 'OB_IMN_GABA', 'OEC', 'OPC_Oligo', 'P_GABA', 'P_Glut', 'TH_Glut', 'Vascular']
+                }
+            else:
+                raise ValueError(f"No default settings found in model_settings.csv for model {model_name}")
         
-        # Convert to dictionary
+        # Convert settings to dictionary
         settings = model_settings.iloc[0].to_dict()
         
-        # Convert numeric values to integers
-        for key in ['sequence_length', 'batch_size', 'zoom_n_bases']:
-            if key in settings:
-                settings[key] = int(settings[key])
+        # Convert string representation of list to actual list for indexed_class_labels
+        if isinstance(settings['indexed_class_labels'], str):
+            # Remove any leading/trailing quotes and split by comma
+            labels_str = settings['indexed_class_labels'].strip("'")
+            # Split by comma and clean up each label
+            class_labels = [label.strip().strip("'") for label in labels_str.split(',')]
+            settings['indexed_class_labels'] = class_labels
         
-        # Parse indexed_class_labels if present
-        if 'indexed_class_labels' in settings and isinstance(settings['indexed_class_labels'], str):
-            try:
-                # Remove any quotes and split by comma
-                labels_str = settings['indexed_class_labels'].strip("'")
-                # Split by comma and strip whitespace and quotes from each label
-                class_labels = [label.strip().strip("'") for label in labels_str.split(',')]
-                settings['indexed_class_labels'] = class_labels
-                logger.info(f"Parsed class labels: {class_labels}")
-            except Exception as e:
-                logger.error(f"Error parsing indexed_class_labels: {str(e)}")
-                raise
-        
-        logger.info(f"Loaded settings for model {model_name}: {settings}")
         return settings
-        
     except Exception as e:
         logger.error(f"Error loading model settings: {str(e)}")
         raise 
