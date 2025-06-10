@@ -45,15 +45,7 @@ supertype_bigwigs = {row['supertype_label']: f"/data/supertype/{row['supertype_l
 
 3. Deploy the application:
 ```bash
-rsconnect deploy dash --server https://your-connect-server.com --api-key your-api-key --name ATAC_vis --entrypoint app:app .
-```
-
-Alternatively, you can set up environment variables for the server and API key:
-```bash
-export CONNECT_SERVER=https://your-connect-server.com
-export CONNECT_API_KEY=your-api-key
-rsconnect deploy dash --name ATAC_vis --entrypoint app:app .
-```
+rsconnect - deploy from github
 
 ## Important Notes
 

@@ -45,8 +45,9 @@ logger = logging.getLogger(__name__)
 # Set the data directory
 
 
-#DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
+
 DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
+DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
 
 # isilon
 app = dash.Dash(__name__, 
@@ -85,10 +86,10 @@ app.index_string = '''
 '''
 
 # Load data
-cell_type_colors = load_cell_type_colors()
+cell_type_colors = load_cell_type_colors(os.path.join(DATA_DIR, 'other/cell_type_colors.csv'))
 diff_peaks_df, diff_peaks_columns = load_differential_peaks()
 bigwig_df = scan_for_bigwigs()
-peak_table_options = scan_for_peak_tables()
+peak_table_options = scan_for_peak_tables(DATA_DIR)
 
 # Load hierarchy information
 hierarchy_df = pd.read_csv(os.path.join(DATA_DIR, 'other/AIT21_cldf.csv'))
@@ -274,8 +275,8 @@ app.layout = html.Div([
                                 searchable=True,
                                 clearable=True,
                                 placeholder='Select files...',
-                                optionHeight=20,
-                                maxHeight=60
+                                optionHeight=35,
+                                maxHeight=200
                             ),
                         ], style={'width': '32%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px', 'boxSizing': 'border-box'}),
                         
@@ -300,8 +301,9 @@ app.layout = html.Div([
                                 searchable=True,
                                 clearable=True,
                                 placeholder='Select files...',
-                                optionHeight=20,
-                                maxHeight=60
+                                optionHeight=35,
+                                maxHeight=200,
+                                style={'width': '100%', 'marginBottom': '20px'}
                             ),
                         ], style={'width': '32%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px', 'boxSizing': 'border-box'}),
                         
@@ -323,8 +325,9 @@ app.layout = html.Div([
                                 searchable=True,
                                 clearable=True,
                                 placeholder='Select files...',
-                                optionHeight=20,
-                                maxHeight=60
+                                optionHeight=35,
+                                maxHeight=200,
+                                style={'width': '100%', 'marginBottom': '20px'}
                             ),
                         ], style={'width': '32%', 'display': 'inline-block', 'verticalAlign': 'top', 'padding': '10px', 'boxSizing': 'border-box'})
                     ], style={'marginBottom': '20px', 'display': 'flex', 'justifyContent': 'space-between'}),

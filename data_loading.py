@@ -5,7 +5,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-def load_cell_type_colors(color_file='data/other/cell_type_colors.csv'):
+def load_cell_type_colors(color_file):
     """Load cell type colors into a dictionary."""
     cell_type_colors_df = pd.read_csv(color_file, sep='\t')
     return dict(zip(cell_type_colors_df['cell_type'].tolist(), cell_type_colors_df['color']))
@@ -34,10 +34,13 @@ def scan_for_bigwigs(root_dir='data'):
     
     return pd.DataFrame(bigwig_files)
 
-def scan_for_peak_tables():
+def scan_for_peak_tables(data_dir=None):
     """Scan the data/differential_peaks directory for available peak tables."""
     try:
-        peaks_dir = Path('data/differential_peaks')
+        if data_dir is not None:
+            peaks_dir = Path(os.path.join(data_dir, 'differential_peaks'))
+        else:
+            peaks_dir = Path('data/differential_peaks')
         if not peaks_dir.exists():
             logger.warning("Differential peaks directory not found")
             return []

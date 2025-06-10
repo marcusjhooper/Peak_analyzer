@@ -6,16 +6,16 @@
     "entrypoint": "app"
   },
   "python": {
-    "version": "3.12.11",
+    "version": "3.9.7",
     "package_manager": {
       "name": "pip",
-      "version": "25.1.1",
+      "version": "23.3.1",
       "package_file": "requirements.txt"
     }
   },
   "files": {
     "requirements.txt": {
-      "checksum": "40f0690f8a8677cc16426586090da3bc"
+      "checksum": "a2e77c3ffe997457887015c01c690d89"
     },
     "1.11.0": {
       "checksum": "fd7daacea3b84987a6eac0e7f640fe93"
@@ -24,19 +24,19 @@
       "checksum": "a904a3b0b36db7bf6911009ca842eb52"
     },
     "DEPLOY.md": {
-      "checksum": "dc12fa5ac49358ffb91960b071249ea2"
+      "checksum": "4abff450cd0fbd8bd530943b333e45aa"
     },
     "README.md": {
       "checksum": "613f84896c3f6dc0ddbee52714a7f5a8"
     },
     "app.py": {
-      "checksum": "886c45130b8586a0b700cf5a9c607fc6"
+      "checksum": "93c19dc8ff8a2243be897a6fecdc09c0"
     },
     "assets/styles.css": {
       "checksum": "4169e23bfc428b170349b74bd9ebaef6"
     },
     "data_loading.py": {
-      "checksum": "2f7bcd2c989f9b32880ef0abfa20af3c"
+      "checksum": "1e240e809f2480e5605dd89cdeb21057"
     },
     "plotting.py": {
       "checksum": "37530cfeff2b00059c76b8240ade617d"
