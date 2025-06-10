@@ -6,7 +6,7 @@
     "entrypoint": "app"
   },
   "python": {
-    "version": "3.12",
+    "version": "3.10.12",
     "package_manager": {
       "name": "pip",
       "version": "25.0.1",
@@ -15,7 +15,7 @@
   },
   "files": {
     "requirements.txt": {
-      "checksum": "a2e77c3ffe997457887015c01c690d89"
+      "checksum": "393f07331013ff521f8a001d7ed8a3cc"
     },
     "1.11.0": {
       "checksum": "fd7daacea3b84987a6eac0e7f640fe93"
@@ -34,6 +34,9 @@
     },
     "assets/styles.css": {
       "checksum": "4169e23bfc428b170349b74bd9ebaef6"
+    },
+    "atac_vis.sif": {
+      "checksum": "b183ae0891ac795eedefc544daaa1dd6"
     },
     "data_loading.py": {
       "checksum": "1e240e809f2480e5605dd89cdeb21057"
