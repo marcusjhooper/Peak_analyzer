@@ -45,9 +45,9 @@ logger = logging.getLogger(__name__)
 # Set the data directory
 
 
-
+#DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
 DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
-DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
+
 
 # isilon
 app = dash.Dash(__name__, 
