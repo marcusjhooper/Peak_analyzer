@@ -45,8 +45,10 @@ logger = logging.getLogger(__name__)
 # Set the data directory
 
 
-#DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
+DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
 DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
+
+
 
 
 # isilon
