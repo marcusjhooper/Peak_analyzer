@@ -40,10 +40,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize the Dash app
-#local
-#app = dash.Dash(__name__, suppress_callback_exceptions=True) 
-# Set the data directory
 
+# Set the data directory
 
 DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
 DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
@@ -51,8 +49,9 @@ DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/a
 
 
 
+
 # isilon
-app = dash.Dash(__name__, 
+app = dash.Dash(__name__, title='DeNAli ⛰️',
                 suppress_callback_exceptions=True,
                 assets_folder='assets')  # Change back to 'assets' folder for CSS
 
@@ -102,12 +101,9 @@ hierarchy_df = hierarchy_df.drop_duplicates(subset=['class_id_label', 'subclass_
 class_to_subclass = hierarchy_df.groupby('class_id_label')['subclass_id_label'].apply(list).to_dict()
 subclass_to_supertype = hierarchy_df.groupby('subclass_id_label')['supertype_label'].apply(list).to_dict()
 
-# Log the hierarchy mappings for debugging
-logger.info("Class to subclass mapping:")
 for class_name, subclasses in class_to_subclass.items():
     logger.info(f"{class_name}: {subclasses}")
 
-logger.info("Subclass to supertype mapping:")
 for subclass_name, supertypes in subclass_to_supertype.items():
     logger.info(f"{subclass_name}: {supertypes}")
 
@@ -167,14 +163,25 @@ for _, row in model_settings_df.iterrows():
 # Add CRESTED model state
 crested_model = None
 
-# Set default font to Arial
+# layout
+# title
 app.layout = html.Div([
-    html.H1('Peak viewer'),
+    html.H1(
+        [
+            html.Span("D", style={"color": "blue", "fontSize": "48px"}),
+            html.Span("e", style={"color": "black", "fontSize": "32px"}),
+            html.Span("N", style={"color": "red", "fontSize": "48px"}),
+            html.Span("A", style={"color": "green", "fontSize": "48px"}),
+            html.Span("l", style={"color": "black", "fontSize": "32px"}),
+            html.Span("i", style={"color": "black", "fontSize": "32px"})
+        ],
+        style={"textAlign": "left", "fontFamily": "Arial"}
+    ),
     
     # Tabs
     dcc.Tabs([
         # Genomic Viewer Tab (Differential Peaks and BigWig Viewer)
-        dcc.Tab(label='Genomic Viewer', children=[
+        dcc.Tab(label='Bigwig Viewer', children=[
             # Differential Peaks Table
             html.Div([
                 html.H2('Differential Peaks'),
@@ -242,8 +249,9 @@ app.layout = html.Div([
                         type='text',
                         style={'width': '300px', 'marginRight': '10px'}
                     ),
-                    html.Button('Update Plot', id='update-button', n_clicks=0, 
-                               style={'marginRight': '10px'}),
+
+                    html.Button('Update Plot', id='update-button', n_clicks=0, style={'marginRight': '10px'}),
+
                     html.Button('Zoom Out 1kb', id='zoom-out-1kb', n_clicks=0, 
                                style={'marginRight': '10px'}),
                     html.Button('Zoom Out 10kb', id='zoom-out-10kb', n_clicks=0, 
@@ -276,7 +284,7 @@ app.layout = html.Div([
                                 className='dropdown-compact',
                                 searchable=True,
                                 clearable=True,
-                                placeholder='Select files...',
+                                placeholder='Select...',
                                 optionHeight=35,
                                 maxHeight=200
                             ),
@@ -302,7 +310,7 @@ app.layout = html.Div([
                                 className='dropdown-compact',
                                 searchable=True,
                                 clearable=True,
-                                placeholder='Select files...',
+                                placeholder='Select...',
                                 optionHeight=35,
                                 maxHeight=200,
                                 style={'width': '100%', 'marginBottom': '20px'}
@@ -326,7 +334,7 @@ app.layout = html.Div([
                                 className='dropdown-compact',
                                 searchable=True,
                                 clearable=True,
-                                placeholder='Select files...',
+                                placeholder='Select...',
                                 optionHeight=35,
                                 maxHeight=200,
                                 style={'width': '100%', 'marginBottom': '20px'}
@@ -337,19 +345,28 @@ app.layout = html.Div([
                     # Plots row
                     html.Div([
                         # Class plot
-                        html.Div([
-                            html.Img(id='class-plot', className='plot-container')
-                        ], className='plot-column'),
-                        
+                        html.Div([dcc.Loading(
+                        id="loading-class",
+                        type="dot",  # options: "default", "circle", "dot", "cube"
+                        children=html.Img(id="class-plot", className='plot-container'),
+                        style={"transform": "scale(2)", "transformOrigin": "left top"}
+                        )], className='plot-column'),
+
                         # Subclass plot
-                        html.Div([
-                            html.Img(id='subclass-plot', className='plot-container')
-                        ], className='plot-column'),
-                        
+                        html.Div([dcc.Loading(
+                        id="loading-subclass",
+                        type="dot",  # options: "default", "circle", "dot", "cube"
+                        children=html.Img(id="subclass-plot", className='plot-container'),
+                        style={"transform": "scale(2)", "transformOrigin": "left top"}
+                        )], className='plot-column'),
+
                         # Supertype plot
-                        html.Div([
-                            html.Img(id='supertype-plot', className='plot-container')
-                        ], className='plot-column')
+                        html.Div([dcc.Loading(
+                        id="loading-supertype",
+                        type="dot",  # options: "default", "circle", "dot", "cube"
+                        children=html.Img(id="supertype-plot", className='plot-container'),
+                        style={"transform": "scale(2)", "transformOrigin": "left top"}
+                        )], className='plot-column'),
                     ], style={'display': 'flex', 'justifyContent': 'space-between'})
                 ], style={'marginTop': '20px', 'padding': '20px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'})
             ], style={'padding': '20px', 'overflowY': 'auto'})
@@ -458,11 +475,17 @@ app.layout = html.Div([
                             style={'width': '100%', 'marginBottom': '20px'}
                         ),
                     ]),
-                    
                     html.Button('Run Scores', id='run-scores-button', n_clicks=0),
+                    html.Div([dcc.Loading(
+                        id="loading",
+                        type="dot",  # options: "default", "circle", "dot", "cube"
+                        children=html.Div(id="contribution-scores-plot"),
+                        style={"transform": "scale(2)", "transformOrigin": "left top"}
+                        )
+                    ]),
                     
                     html.Div(id='model-status', style={'marginBottom': '20px'}),
-                    html.Div(id='contribution-scores-plot', style={'marginBottom': '20px'}),
+                    #html.Div(id='contribution-scores-plot', style={'marginBottom': '20px'}),
                     
                     # Download button and component
                     html.Div([
@@ -540,8 +563,6 @@ def load_crested_model(n_clicks, selected_model, custom_model_path):
         
         return html.Div([
             html.P("Model loaded successfully!"),
-            html.P(f"Model path: {model_path}"),
-            html.P(f"Model settings: {model_settings}")
         ]), False
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
@@ -583,7 +604,7 @@ def update_class_selection(model_status):
 )
 def run_contribution_scores(n_clicks, coordinates, selected_classes):
     if n_clicks == 0 or not crested_model:
-        return "No model loaded or scores not run yet"
+        return ""
     
     try:
         logger.info("Starting contribution scores calculation...")
@@ -664,19 +685,17 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes):
             # Use selected classes if provided, otherwise use all classes
             if selected_classes is not None and len(selected_classes) > 0:
                 target_idx = selected_classes
-                logger.info(f"Calculating contribution scores for selected classes: {target_idx}")
             else:
                 target_idx = list(range(n_classes))
-                logger.info(f"No classes selected, calculating for all classes: {target_idx}")
             
             scores, one_hot_encoded_sequences = crested.tl.contribution_scores(
+                method='integrated_grad',
                 input=seq_str,
                 target_idx=target_idx,
                 genome=genome_path,
                 model=crested_model,
                 batch_size=model_settings['batch_size']
             )
-            logger.info("Successfully calculated contribution scores")
         except Exception as e:
             logger.error(f"Error in contribution_scores calculation: {str(e)}")
             raise
@@ -717,7 +736,6 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes):
         return html.Div([
             html.P(f"Original coordinates: {chrom}:{start}-{end}"),
             html.P(f"Adjusted coordinates: {chrom}:{new_start}-{new_end}"),
-            html.P(f"Model settings: {display_settings}"),
             html.Img(src=base64_data, style={'width': '100%'})
         ])
     except Exception as e:
