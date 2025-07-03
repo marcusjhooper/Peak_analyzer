@@ -50,6 +50,7 @@ DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/a
 
 
 
+
 # isilon
 app = dash.Dash(__name__, title='DeNAli ⛰️',
                 suppress_callback_exceptions=True,
@@ -95,11 +96,11 @@ peak_table_options = scan_for_peak_tables(DATA_DIR)
 # Load hierarchy information
 hierarchy_df = pd.read_csv(os.path.join(DATA_DIR, 'other/AIT21_cldf.csv'))
 # Drop duplicates while preserving the first occurrence of each unique combination
-hierarchy_df = hierarchy_df.drop_duplicates(subset=['class_id_label', 'subclass_id_label', 'supertype_label'], keep='first')
+hierarchy_df = hierarchy_df.drop_duplicates(subset=['class_id_label', 'subclass_id_label', 'supertype_id_label'], keep='first')
 
 # Create hierarchy mappings
 class_to_subclass = hierarchy_df.groupby('class_id_label')['subclass_id_label'].apply(list).to_dict()
-subclass_to_supertype = hierarchy_df.groupby('subclass_id_label')['supertype_label'].apply(list).to_dict()
+subclass_to_supertype = hierarchy_df.groupby('subclass_id_label')['supertype_id_label'].apply(list).to_dict()
 
 for class_name, subclasses in class_to_subclass.items():
     logger.info(f"{class_name}: {subclasses}")
@@ -123,10 +124,10 @@ subclass_bigwigs = {
 }
 
 supertype_bigwigs = {
-    row['supertype_label']: {
-        'file': os.path.join(DATA_DIR, f"supertype/{row['supertype_label']}.bw"),
-        'url': f"/assets/supertype/{row['supertype_label']}.bw"
-    } for _, row in hierarchy_df.drop_duplicates('supertype_label').iterrows()
+    row['supertype_id_label']: {
+        'file': os.path.join(DATA_DIR, f"supertype/{row['supertype_id_label']}.bw"),
+        'url': f"/assets/supertype/{row['supertype_id_label']}.bw"
+    } for _, row in hierarchy_df.drop_duplicates('supertype_id_label').iterrows()
 }
 
 # Create dropdown options
@@ -160,12 +161,23 @@ for _, row in model_settings_df.iterrows():
         'value': model_path
     })
 
+
+tab_selected_style = {
+    'backgroundColor': '#156082',
+    'color': 'white',
+}
+
 # Add CRESTED model state
 crested_model = None
 
 # layout
 # title
 app.layout = html.Div([
+    #links
+    html.Div([
+        html.A("UCSC genome browser", href="https://genome.ucsc.edu/cgi-bin/hgTracks?db=mm10", style={'margin-right': '10px'}, target="_blank"),
+        html.A("View HOF enhancers     |", href="https://enhancer-cheatsheet.replit.app/", target="_blank")
+        ], style={'float': 'right'}),
     html.H1(
         [
             html.Span("D", style={"color": "blue", "fontSize": "48px"}),
@@ -177,11 +189,14 @@ app.layout = html.Div([
         ],
         style={"textAlign": "left", "fontFamily": "Arial"}
     ),
+
+
     
     # Tabs
     dcc.Tabs([
         # Genomic Viewer Tab (Differential Peaks and BigWig Viewer)
-        dcc.Tab(label='Bigwig Viewer', children=[
+        dcc.Tab(label='Bigwig Viewer',selected_style=tab_selected_style,
+            children=[
             # Differential Peaks Table
             html.Div([
                 html.H2('Differential Peaks'),
@@ -192,65 +207,121 @@ app.layout = html.Div([
                         options=peak_table_options,
                         value=None,
                         style={'width': '300px', 'marginBottom': '20px'}
-                    ),
-                    DataTable(
-                        id='peaks-table',
-                        columns=diff_peaks_columns,
-                        data=diff_peaks_df.to_dict('records'),
-                        page_size=10,
-                        filter_action="native",
-                        sort_action="native",
-                        sort_mode="single",
-                        style_table={'width': '100%', 'minWidth': '100%', 'overflowX': 'auto'},
-                        style_cell={
-                            'textAlign': 'left',
-                            'padding': '5px',
-                            'whiteSpace': 'normal',
-                            'height': 'auto',
-                            'cursor': 'pointer',
-                            'minWidth': '100px',
-                            'maxWidth': '200px'
-                        },
-                        style_header={
-                            'backgroundColor': 'rgb(230, 230, 230)',
-                            'fontWeight': 'bold',
-                            'textAlign': 'left'
-                        },
-                        cell_selectable=True,
-                        selected_cells=[],
-                        row_selectable='single',
-                        selected_rows=[],
-                        style_data_conditional=[
-                            {
+                        ),
+                    
+                    #hmm doesn't seem to work
+                    html.Div([dcc.Loading(
+                        id="loading-table",
+                        type="dot",  # options: "default", "circle", "dot", "cube"
+                        children=html.Div(
+                            DataTable(
+                                id='peaks-table',
+                                columns=diff_peaks_columns,
+                                data=diff_peaks_df.to_dict('records'),
+                                page_size=10,
+                                filter_action="native",
+                                sort_action="native",
+                                sort_mode="single",
+                                style_table={'width': '100%', 'minWidth': '100%', 'overflowX': 'auto'},
+                                style_cell={
+                                'textAlign': 'left',
+                                'padding': '5px',
+                                'whiteSpace': 'normal',
+                                'height': 'auto',
+                                'cursor': 'pointer',
+                                'minWidth': '100px',
+                                'maxWidth': '200px'
+                                },
+                                style_header={
+                                'backgroundColor': 'rgb(230, 230, 230)',
+                                'fontWeight': 'bold',
+                                'textAlign': 'left'
+                                },
+                                cell_selectable=True,
+                                selected_cells=[],
+                                row_selectable='single',
+                                selected_rows=[],
+                                style_data_conditional=[
+                                {
                                 'if': {'row_index': 'odd'},
                                 'backgroundColor': 'rgb(248, 248, 248)'
-                            },
-                            {
+                                },
+                                {
                                 'if': {'state': 'selected'},
                                 'backgroundColor': 'rgb(200, 230, 255)',
                                 'border': '1px solid rgb(0, 116, 217)'
-                            }
-                        ],
-                        filter_options={
-                            'case': 'insensitive',
-                            'placeholder': 'Filter...'
-                        },
-                        page_action="native",
-                        page_current=0
-                    )
+                                }
+                                ],
+                                filter_options={
+                                'case': 'insensitive',
+                                'placeholder': 'Filter...'
+                                },
+                                page_action="native",
+                                page_current=0
+                                )
+                            ),
+                        style={"transform": "scale(2)", "transformOrigin": "left top"}
+                        )]),
+
+
+                    # DataTable(
+                    #     id='peaks-table',
+                    #     columns=diff_peaks_columns,
+                    #     data=diff_peaks_df.to_dict('records'),
+                    #     page_size=10,
+                    #     filter_action="native",
+                    #     sort_action="native",
+                    #     sort_mode="single",
+                    #     style_table={'width': '100%', 'minWidth': '100%', 'overflowX': 'auto'},
+                    #     style_cell={
+                    #         'textAlign': 'left',
+                    #         'padding': '5px',
+                    #         'whiteSpace': 'normal',
+                    #         'height': 'auto',
+                    #         'cursor': 'pointer',
+                    #         'minWidth': '100px',
+                    #         'maxWidth': '200px'
+                    #     },
+                    #     style_header={
+                    #         'backgroundColor': 'rgb(230, 230, 230)',
+                    #         'fontWeight': 'bold',
+                    #         'textAlign': 'left'
+                    #     },
+                    #     cell_selectable=True,
+                    #     selected_cells=[],
+                    #     row_selectable='single',
+                    #     selected_rows=[],
+                    #     style_data_conditional=[
+                    #         {
+                    #             'if': {'row_index': 'odd'},
+                    #             'backgroundColor': 'rgb(248, 248, 248)'
+                    #         },
+                    #         {
+                    #             'if': {'state': 'selected'},
+                    #             'backgroundColor': 'rgb(200, 230, 255)',
+                    #             'border': '1px solid rgb(0, 116, 217)'
+                    #         }
+                    #     ],
+                    #     filter_options={
+                    #         'case': 'insensitive',
+                    #         'placeholder': 'Filter...'
+                    #     },
+                    #     page_action="native",
+                    #     page_current=0
+                    # )
                 ], style={'marginBottom': '30px', 'width': '100%'}),
                 
                 # BigWig Viewer Controls
                 html.Div([
-                    html.Label('Genomic Coordinates (e.g., chr13:113379626-113380127):'),
+                    html.Label('mm10 Genomic Coordinates (e.g., chr18:58788458-58788958):'),
                     dcc.Input(
                         id='coordinates-input',
-                        value='chr19:23980545-23981046',
+                        value='chr18:58788458-58788958',
                         type='text',
                         style={'width': '300px', 'marginRight': '10px'}
                     ),
 
-                    html.Button('Update Plot', id='update-button', n_clicks=0, style={'marginRight': '10px'}),
+                    html.Button('Update Plot', id='update-button', n_clicks=0, style={'marginRight': '10px', 'backGroundColor': "Springgreen"}),
 
                     html.Button('Zoom Out 1kb', id='zoom-out-1kb', n_clicks=0, 
                                style={'marginRight': '10px'}),
@@ -373,7 +444,7 @@ app.layout = html.Div([
         ]),
         
         # Sequence Analysis Tab
-        dcc.Tab(label='Sequence Analysis', children=[
+        dcc.Tab(label='Sequence Analysis',selected_style=tab_selected_style, children=[
             html.Div([
                 html.H2('Sequence Viewer and Analysis'),
                 
@@ -383,7 +454,7 @@ app.layout = html.Div([
                     html.Div([
                         # Genomic coordinates input
                         html.Div([
-                            html.Label('Genomic Coordinates (e.g., chr13:113379626-113380127):'),
+                            html.Label('Genomic Coordinates (e.g., chr18:58788458-58788958):'),
                             dcc.Input(
                                 id='sequence-coordinates-input',
                                 value='chr19:23980545-23981046',
@@ -453,9 +524,15 @@ app.layout = html.Div([
                                 style={'width': '300px', 'marginRight': '10px'}
                             ),
                         ], style={'display': 'inline-block'}),
+                        html.Div([dcc.Loading(
+
+                            id="loading-model",
+                            type="dot",  # options: "default", "circle", "dot", "cube"
+                            children= html.Button('Load Model', id='load-model-button', n_clicks=0,
+                                style={'marginRight': '10px'}),
+                            style={"transform": "scale(2)", "transformOrigin": "left top"}
+                            )]),
                         
-                        html.Button('Load Model', id='load-model-button', n_clicks=0,
-                                  style={'marginRight': '10px'}),
                     ], style={'marginBottom': '20px'}),
                     
                     # Class selection dropdown

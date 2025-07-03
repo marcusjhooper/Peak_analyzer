@@ -8,7 +8,7 @@ def parse_coordinates(coords):
     """Parse genomic coordinates in format chr:start-end"""
     match = re.match(r'([^:]+):(\d+)-(\d+)', coords)
     if not match:
-        raise ValueError("Invalid coordinate format. Use chr:start-end (e.g., chr13:113379626-113380127)")
+        raise ValueError("Invalid coordinate format. Use chr:start-end (e.g., chr18:58788458-58788958)")
     return match.group(1), int(match.group(2)), int(match.group(3))
 
 def reverse_complement(seq):
