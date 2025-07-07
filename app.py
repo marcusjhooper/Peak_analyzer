@@ -51,6 +51,7 @@ DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/a
 
 
 
+
 # isilon
 app = dash.Dash(__name__, title='DeNAli ⛰️',
                 suppress_callback_exceptions=True,
@@ -175,8 +176,11 @@ crested_model = None
 app.layout = html.Div([
     #links
     html.Div([
-        html.A("UCSC genome browser", href="https://genome.ucsc.edu/cgi-bin/hgTracks?db=mm10", style={'margin-right': '10px'}, target="_blank"),
-        html.A("View HOF enhancers     |", href="https://enhancer-cheatsheet.replit.app/", target="_blank")
+        html.A("|UCSC genome browser|", href="https://genome.ucsc.edu/cgi-bin/hgTracks?db=mm10", style={'margin-right': '10px'}, target="_blank"),
+        html.A("|HOF enhancers|", href="https://enhancer-cheatsheet.replit.app/", style={'margin-right': '10px'}, target="_blank"),
+        html.A("|AIT21_cl.df_and_prioritization|", href="https://docs.google.com/spreadsheets/d/17XN915ZXh2pXy_KUMhVf1z4sdroHxqvttznmiIXEQ70/edit?usp=sharing", style={'margin-right': '10px'}, target="_blank")
+
+        
         ], style={'float': 'right'}),
     html.H1(
         [
