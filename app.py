@@ -508,6 +508,13 @@ app.layout = html.Div([
                         ),
                     ]),
                     html.Button('Run Scores', id='run-scores-button', n_clicks=0),
+                    html.Label('  Zoom to: '),
+                    dcc.Textarea(
+                        id='zoom-input',
+                        placeholder='n bases...',
+                        style={'width': '300px', 'height': '20px', 'marginRight': '10px'}
+                        ),
+                    
                     html.Div([dcc.Loading(
                         id="loading",
                         type="dot",  # options: "default", "circle", "dot", "cube"
@@ -633,11 +640,15 @@ def update_class_selection(model_status):
     [Input('run-scores-button', 'n_clicks')],
     [State('sequence-coordinates-input', 'value'),
      State('class-selection-dropdown', 'value'),
-     State('custom-sequence-input', 'value')
+     State('custom-sequence-input', 'value'),
+     State('zoom-input', 'value')
      ]
 )
 
-def run_contribution_scores(n_clicks, coordinates, selected_classes,custom_sequence = None):
+def run_contribution_scores(n_clicks, coordinates,selected_classes,custom_sequence = None,zoom_to = 500):
+    if (zoom_to is None) | (zoom_to == ''):
+        zoom_to = 500
+    zoom_to = int(zoom_to)
     if n_clicks == 0 or not crested_model:
         return ""
 
@@ -648,7 +659,7 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes,custom_seque
         model_settings = getattr(crested_model, 'settings', {
             'sequence_length': int(model_settings['sequence_length']),
             'batch_size': int(model_settings['batch_size']),
-            'zoom_n_bases': 500
+            'zoom_n_bases': zoom_to
         })
         
         # Get the sequence
@@ -693,14 +704,17 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes,custom_seque
             if (custom_sequence is None) | (custom_sequence==''):
                 sequence = genome[chrom][new_start:new_end]
                 seq_str = str(sequence.seq).upper()
+                title = f"Contribution Scores for {chrom}:{start}-{end}"
             elif custom_sequence is not None:
-                if len(custom_sequence) ==1500:
+                if len(custom_sequence) ==model_settings['sequence_length']:
                     seq_str = custom_sequence
-                elif len(custom_sequence) < 1500:
+                    title = 'Contribution Scores for custom sequence'
+                elif len(custom_sequence) < model_settings['sequence_length']:
                     length = len(custom_sequence)
-                    pad_left = ''.join(list(repeat('N',(1500-length)//2) ))# add n on each side
-                    pad_right = ''.join(list(repeat('N',(1500-len(pad_left)-length))))
+                    pad_left = ''.join(list(repeat('N',(model_settings['sequence_length']-length)//2) ))# add n on each side
+                    pad_right = ''.join(list(repeat('N',(model_settings['sequence_length']-len(pad_left)-length))))
                     seq_str = str(pad_left)+str(custom_sequence)+str(pad_right)
+                    title = 'Contribution Scores for custom sequence'
                     print(custom_sequence)
                     print(seq_str)
 
@@ -766,7 +780,8 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes,custom_seque
             new_end,
             n_classes=len(class_labels),
             class_labels=class_labels,
-            zoom_n_bases=model_settings['zoom_n_bases']
+            zoom_n_bases=zoom_to,
+            title = title
         )
         
         # Store the plot bytes globally
@@ -1270,7 +1285,7 @@ def process_batch(n_clicks, contents, selected_classes):
                         new_end,
                         n_classes=len(class_labels),
                         class_labels=class_labels,
-                        zoom_n_bases=model_settings['zoom_n_bases']
+                        zoom_n_bases=zoom_to
                     )
                     
                     # Save the plot

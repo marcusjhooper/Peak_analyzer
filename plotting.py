@@ -177,7 +177,7 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
         logger.error(f"Error creating plot: {str(e)}")
         return None
 
-def create_contribution_scores_plot(scores, one_hot_encoded_sequences, chrom, start, end, new_start, new_end, n_classes, class_labels=None, zoom_n_bases=500):
+def create_contribution_scores_plot(scores, one_hot_encoded_sequences, chrom, start, end, new_start, new_end, n_classes, class_labels=None, zoom_n_bases=500, title = ''):
     """Create a plot of contribution scores."""
     try:
         # Log the shape of the scores array
@@ -200,7 +200,7 @@ def create_contribution_scores_plot(scores, one_hot_encoded_sequences, chrom, st
             sequence_labels="",
             class_labels=class_labels,
             zoom_n_bases=zoom_n_bases,
-            title=f"Contribution Scores for {chrom}:{start}-{end}"
+            title=title
         )
         
         # Get the current axis and add vertical lines

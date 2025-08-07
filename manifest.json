@@ -30,7 +30,7 @@
       "checksum": "613f84896c3f6dc0ddbee52714a7f5a8"
     },
     "app.py": {
-      "checksum": "6bc8119c850e8d2aaddda9fccea471e2"
+      "checksum": "9f9d4de33f80729b4cd715b0e8c630b2"
     },
     "assets/styles.css": {
       "checksum": "4169e23bfc428b170349b74bd9ebaef6"
@@ -42,7 +42,7 @@
       "checksum": "dcbf6438b1b5db82506b358be03a963e"
     },
     "plotting.py": {
-      "checksum": "37530cfeff2b00059c76b8240ade617d"
+      "checksum": "b5a8f31f7e4f4a00c3edadf08355f630"
     },
     "utils.py": {
       "checksum": "ba685fb379c5402f51bf76f1f5afae05"
