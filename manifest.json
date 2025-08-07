@@ -6,10 +6,10 @@
     "entrypoint": "app"
   },
   "python": {
-    "version": "3.8.10",
+    "version": "3.12.11",
     "package_manager": {
       "name": "pip",
-      "version": "25.0.1",
+      "version": "25.2",
       "package_file": "requirements.txt"
     }
   },
@@ -30,7 +30,7 @@
       "checksum": "613f84896c3f6dc0ddbee52714a7f5a8"
     },
     "app.py": {
-      "checksum": "a74bb619d1219e498cfc9e808463a97a"
+      "checksum": "6bc8119c850e8d2aaddda9fccea471e2"
     },
     "assets/styles.css": {
       "checksum": "4169e23bfc428b170349b74bd9ebaef6"
