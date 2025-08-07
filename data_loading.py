@@ -173,22 +173,16 @@ def load_model_settings(model_path, data_dir):
         if model_settings.empty:
             model_settings = settings_df[settings_df['model_file'].str.contains(model_name)]
         
-        if model_settings.empty:
-            logger.warning(f"No settings found for model {model_name}, using default settings")
+        #not implemented yet
+        #if model_settings.empty:
+            #logger.warning(f"No settings found for model {model_name}, using default settings")
             # Use default settings based on model name
-            if 'class_22' in model_name:
-                return {
-                    'batch_size': 8,
-                    'sequence_length': 2000,
-                    'zoom_n_bases': 500,
-                    'indexed_class_labels': ['Astro_Epen', 'CB_GABA', 'CB_Glut', 'CNU_HYa_GABA', 'CNU_HYa_Glut', 'CNU_LGE_GABA', 'CNU_MGE_GABA', 'CTX_CGE_GABA', 'CTX_MGE_GABA', 'DG_IMN_Glut', 'HY_GABA', 'HY_Glut', 'HY_Gnrh1_Glut', 'HY_MM_Glut', 'IT_ET_Glut', 'Immune', 'LSX_GABA', 'MB_Dopa', 'MB_GABA', 'MB_Glut', 'MB_HB_Sero', 'MH_LH_Glut', 'MY_GABA', 'MY_Glut', 'NP_CT_L6b_Glut', 'OB_CR_Glut', 'OB_IMN_GABA', 'OEC', 'OPC_Oligo', 'P_GABA', 'P_Glut', 'TH_Glut', 'Vascular']
-                }
-            else:
-                raise ValueError(f"No default settings found in model_settings.csv for model {model_name}")
+
         
         # Convert settings to dictionary
         settings = model_settings.iloc[0].to_dict()
-        
+        logger.info(settings.keys())
+        logger.info(settings.values())
         # Convert string representation of list to actual list for indexed_class_labels
         if isinstance(settings['indexed_class_labels'], str):
             # Remove any leading/trailing quotes and split by comma

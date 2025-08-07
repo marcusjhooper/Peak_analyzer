@@ -17,6 +17,7 @@ from tensorflow import keras
 import matplotlib
 import zipfile
 import tempfile
+from itertools import repeat
 matplotlib.use('Agg')  # Set the backend to Agg for non-interactive plotting
 
 
@@ -43,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # Set the data directory
 
-DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
+#DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
 DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
 
 
@@ -53,7 +54,7 @@ DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/a
 
 
 # isilon
-app = dash.Dash(__name__, title='DeNAli ⛰️',
+app = dash.Dash(__name__, title='DeNAli',
                 suppress_callback_exceptions=True,
                 assets_folder='assets')  # Change back to 'assets' folder for CSS
 
@@ -103,11 +104,6 @@ hierarchy_df = hierarchy_df.drop_duplicates(subset=['class_id_label', 'subclass_
 class_to_subclass = hierarchy_df.groupby('class_id_label')['subclass_id_label'].apply(list).to_dict()
 subclass_to_supertype = hierarchy_df.groupby('subclass_id_label')['supertype_id_label'].apply(list).to_dict()
 
-for class_name, subclasses in class_to_subclass.items():
-    logger.info(f"{class_name}: {subclasses}")
-
-for subclass_name, supertypes in subclass_to_supertype.items():
-    logger.info(f"{subclass_name}: {supertypes}")
 
 # Create BigWig file mappings
 class_bigwigs = {
@@ -180,7 +176,6 @@ app.layout = html.Div([
         html.A("|HOF enhancers|", href="https://enhancer-cheatsheet.replit.app/", style={'margin-right': '10px'}, target="_blank"),
         html.A("|AIT21_cl.df_and_prioritization|", href="https://docs.google.com/spreadsheets/d/17XN915ZXh2pXy_KUMhVf1z4sdroHxqvttznmiIXEQ70/edit?usp=sharing", style={'margin-right': '10px'}, target="_blank")
 
-        
         ], style={'float': 'right'}),
     html.H1(
         [
@@ -268,51 +263,6 @@ app.layout = html.Div([
                         )]),
 
 
-                    # DataTable(
-                    #     id='peaks-table',
-                    #     columns=diff_peaks_columns,
-                    #     data=diff_peaks_df.to_dict('records'),
-                    #     page_size=10,
-                    #     filter_action="native",
-                    #     sort_action="native",
-                    #     sort_mode="single",
-                    #     style_table={'width': '100%', 'minWidth': '100%', 'overflowX': 'auto'},
-                    #     style_cell={
-                    #         'textAlign': 'left',
-                    #         'padding': '5px',
-                    #         'whiteSpace': 'normal',
-                    #         'height': 'auto',
-                    #         'cursor': 'pointer',
-                    #         'minWidth': '100px',
-                    #         'maxWidth': '200px'
-                    #     },
-                    #     style_header={
-                    #         'backgroundColor': 'rgb(230, 230, 230)',
-                    #         'fontWeight': 'bold',
-                    #         'textAlign': 'left'
-                    #     },
-                    #     cell_selectable=True,
-                    #     selected_cells=[],
-                    #     row_selectable='single',
-                    #     selected_rows=[],
-                    #     style_data_conditional=[
-                    #         {
-                    #             'if': {'row_index': 'odd'},
-                    #             'backgroundColor': 'rgb(248, 248, 248)'
-                    #         },
-                    #         {
-                    #             'if': {'state': 'selected'},
-                    #             'backgroundColor': 'rgb(200, 230, 255)',
-                    #             'border': '1px solid rgb(0, 116, 217)'
-                    #         }
-                    #     ],
-                    #     filter_options={
-                    #         'case': 'insensitive',
-                    #         'placeholder': 'Filter...'
-                    #     },
-                    #     page_action="native",
-                    #     page_current=0
-                    # )
                 ], style={'marginBottom': '30px', 'width': '100%'}),
                 
                 # BigWig Viewer Controls
@@ -478,6 +428,7 @@ app.layout = html.Div([
                                 style={'width': '300px', 'height': '30px', 'marginRight': '10px'}
                             ),
                             html.Button('Use Custom Sequence', id='use-custom-sequence-button', n_clicks=0),
+                            html.Button('Remove sequence', id='clear-sequence-button', n_clicks=0),
                         ], style={'display': 'inline-block'}),
                         
                         # Sequence analysis options
@@ -681,19 +632,22 @@ def update_class_selection(model_status):
     Output('contribution-scores-plot', 'children'),
     [Input('run-scores-button', 'n_clicks')],
     [State('sequence-coordinates-input', 'value'),
-     State('class-selection-dropdown', 'value')]
+     State('class-selection-dropdown', 'value'),
+     State('custom-sequence-input', 'value')
+     ]
 )
-def run_contribution_scores(n_clicks, coordinates, selected_classes):
+
+def run_contribution_scores(n_clicks, coordinates, selected_classes,custom_sequence = None):
     if n_clicks == 0 or not crested_model:
         return ""
-    
+
     try:
         logger.info("Starting contribution scores calculation...")
         
-        # Get model settings
+        model_settings = crested_model.settings
         model_settings = getattr(crested_model, 'settings', {
-            'sequence_length': 1500,
-            'batch_size': 128,
+            'sequence_length': int(model_settings['sequence_length']),
+            'batch_size': int(model_settings['batch_size']),
             'zoom_n_bases': 500
         })
         
@@ -736,8 +690,21 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes):
             
             # Get the sequence
             logger.info(f"Getting sequence for {chrom}:{new_start}-{new_end}")
-            sequence = genome[chrom][new_start:new_end]
-            seq_str = str(sequence.seq).upper()
+            if (custom_sequence is None) | (custom_sequence==''):
+                sequence = genome[chrom][new_start:new_end]
+                seq_str = str(sequence.seq).upper()
+            elif custom_sequence is not None:
+                if len(custom_sequence) ==1500:
+                    seq_str = custom_sequence
+                elif len(custom_sequence) < 1500:
+                    length = len(custom_sequence)
+                    pad_left = ''.join(list(repeat('N',(1500-length)//2) ))# add n on each side
+                    pad_right = ''.join(list(repeat('N',(1500-len(pad_left)-length))))
+                    seq_str = str(pad_left)+str(custom_sequence)+str(pad_right)
+                    print(custom_sequence)
+                    print(seq_str)
+
+
             
             # Validate sequence
             if not seq_str:
@@ -1029,16 +996,30 @@ def format_sequence_with_line_numbers(seq, width=50):
         lines.append(f"{line_num:8d} {chunk}")
     return '\n'.join(lines)
 
+
+
+@app.callback(
+    Output('custom-sequence-input', 'value'),  # Update the value of 'my-input'
+    Input('clear-sequence-button', 'n_clicks') # Triggered by button clicks
+    )
+def clear_sequence_on_button_click(n_clicks):
+    if n_clicks: # Check if the button has been clicked at least once
+        return '' # restart
+        return dash.no_update # Do not update if the button hasn't been clicked
+
+
+
 @callback(
     Output('sequence-output', 'children'),
     [Input('get-sequence-button', 'n_clicks'),
      Input('use-custom-sequence-button', 'n_clicks'),
+     Input('clear-sequence-button', 'n_clicks'),
      Input('motif-input', 'value')],
     [State('sequence-coordinates-input', 'value'),
      State('custom-sequence-input', 'value'),
      State('sequence-options', 'value')]
 )
-def get_sequence(get_clicks, custom_clicks, motif, coordinates, custom_sequence, options):
+def get_sequence(get_clicks, custom_clicks,clear_sequence, motif, coordinates, custom_sequence, options):
     ctx = dash.callback_context
     if not ctx.triggered:
         return "Click a button to fetch sequence"
@@ -1046,7 +1027,9 @@ def get_sequence(get_clicks, custom_clicks, motif, coordinates, custom_sequence,
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     try:
-        if trigger_id == 'get-sequence-button':
+        if trigger_id == 'clear-sequence-button':
+            seq_str = ''
+        elif trigger_id == 'get-sequence-button':
             # Parse coordinates
             chrom, start, end = parse_coordinates(coordinates)
             
