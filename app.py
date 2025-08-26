@@ -34,7 +34,7 @@ from data_loading import (
     load_model_settings,
     scan_for_peak_tables
 )
-from plotting import create_contribution_scores_plot, create_plot
+from plotting import create_contribution_scores_plot, create_plot, contribution_scores_df, plot_heatmap, create_contribution_scores_dataframe
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
 
 # Set the data directory
 
-#DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
-DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
+DATA_DIR = '/home/mh/app/Denali/data'  #local
+#DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
 
 
 
@@ -515,6 +515,40 @@ app.layout = html.Div([
                         style={'width': '300px', 'height': '20px', 'marginRight': '10px'}
                         ),
                     
+                    # Plot type selector
+                    html.Div([
+                        html.Label('Plot Type: '),
+                        dcc.RadioItems(
+                            id='plot-type-selector',
+                            options=[
+                                {'label': 'Sequence Logo', 'value': 'line'},
+                                {'label': 'Heatmap', 'value': 'heatmap'}
+                            ],
+                            value='heatmap',
+                            inline=True,
+                            style={'marginLeft': '10px'}
+                        ),
+                    ], style={'marginTop': '10px', 'marginBottom': '10px'}),
+                    
+                    # Heatmap options (shown by default since heatmap is default)
+                    html.Div(id='heatmap-options', style={'display': 'block', 'marginTop': '10px', 'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'}, children=[
+                        html.Div([
+                            html.Label('Color Map: '),
+                            dcc.Dropdown(
+                                id='heatmap-cmap',
+                                options=[
+                                    {'label': 'Cool Warm', 'value': 'coolwarm'},
+                                    {'label': 'RdBu', 'value': 'RdBu'},
+                                    {'label': 'Viridis', 'value': 'viridis'},
+                                    {'label': 'Plasma', 'value': 'plasma'},
+                                    {'label': 'Inferno', 'value': 'inferno'}
+                                ],
+                                value='coolwarm',
+                                style={'width': '150px', 'display': 'inline-block', 'marginLeft': '10px'}
+                            ),
+                        ], style={'marginTop': '5px', 'marginBottom': '5px'}),
+                    ]),
+                    
                     html.Div([dcc.Loading(
                         id="loading",
                         type="dot",  # options: "default", "circle", "dot", "cube"
@@ -559,6 +593,9 @@ app.layout = html.Div([
 
 # Add global variable to store the current plot bytes
 current_plot_bytes = None
+
+# Add global variable to store the current plot type
+current_plot_type = 'heatmap'
 
 # Add global variable to store batch results
 batch_results = None
@@ -636,16 +673,30 @@ def update_class_selection(model_status):
         return [], []
 
 @callback(
+    Output('heatmap-options', 'style'),
+    [Input('plot-type-selector', 'value')]
+)
+def toggle_heatmap_options(plot_type):
+    """Show/hide heatmap options based on plot type selection."""
+    print(f"DEBUG: Plot type selector changed to: {plot_type}")
+    if plot_type == 'heatmap':
+        return {'display': 'block', 'marginTop': '10px', 'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'}
+    else:
+        return {'display': 'none'}
+
+@callback(
     Output('contribution-scores-plot', 'children'),
     [Input('run-scores-button', 'n_clicks')],
     [State('sequence-coordinates-input', 'value'),
      State('class-selection-dropdown', 'value'),
      State('custom-sequence-input', 'value'),
-     State('zoom-input', 'value')
+     State('zoom-input', 'value'),
+     State('plot-type-selector', 'value'),
+     State('heatmap-cmap', 'value')
      ]
 )
 
-def run_contribution_scores(n_clicks, coordinates,selected_classes,custom_sequence = None,zoom_to = 500):
+def run_contribution_scores(n_clicks, coordinates, selected_classes, custom_sequence=None, zoom_to=500, plot_type='heatmap', heatmap_cmap='coolwarm'):
     if (zoom_to is None) | (zoom_to == ''):
         zoom_to = 500
     zoom_to = int(zoom_to)
@@ -769,24 +820,63 @@ def run_contribution_scores(n_clicks, coordinates,selected_classes,custom_sequen
             class_labels = [class_labels[i] for i in selected_classes]
         logger.info(f"Using class labels: {class_labels}")
         
-        # Create the plot
-        base64_data, plot_bytes = create_contribution_scores_plot(
-            scores, 
-            one_hot_encoded_sequences, 
-            chrom, 
-            start, 
-            end, 
-            new_start, 
-            new_end,
-            n_classes=len(class_labels),
-            class_labels=class_labels,
-            zoom_n_bases=zoom_to,
-            title = title
-        )
+        # Create the plot based on selected type
+        logger.info(f"Plot type selected: {plot_type}")
+        if plot_type == 'line':
+            base64_data, plot_bytes = create_contribution_scores_plot(
+                scores, 
+                one_hot_encoded_sequences, 
+                chrom, 
+                start, 
+                end, 
+                new_start, 
+                new_end,
+                n_classes=len(class_labels),
+                class_labels=class_labels,
+                zoom_n_bases=zoom_to,
+                title=title
+            )
+        elif plot_type == 'heatmap':
+            print(f"DEBUG: Heatmap branch entered")
+            # Create contribution scores dataframe using the already calculated scores
+            coordinates_str = f"{chrom}:{new_start}-{new_end}"
+            logger.info(f"Creating heatmap for coordinates: {coordinates_str}")
+            logger.info(f"Scores type: {type(scores)}, shape: {scores.shape if hasattr(scores, 'shape') else 'no shape'}")
+            logger.info(f"Class labels: {class_labels}")
+            logger.info(f"Sequence length: {len(seq_str)}")
+            
+            try:
+                score_df = create_contribution_scores_dataframe(
+                    scores=scores,
+                    one_hot_encoded_sequences=one_hot_encoded_sequences,
+                    class_labels=class_labels,
+                    coordinates=coordinates_str,
+                    sequence=seq_str
+                )
+                logger.info(f"Successfully created DataFrame with shape: {score_df.shape}")
+            except Exception as e:
+                logger.error(f"Error in create_contribution_scores_dataframe: {str(e)}")
+                raise
+            
+            # Create heatmap
+            logger.info(f"Creating heatmap with DataFrame shape: {score_df.shape}")
+            logger.info(f"DataFrame columns: {list(score_df.columns)}")
+            logger.info(f"Coordinates string: {coordinates_str}")
+            
+            base64_data, plot_bytes = plot_heatmap(
+                df=score_df,
+                coordinates=coordinates_str,
+                zoom_to=zoom_to,
+                figsize=(30, 5),
+                cmap=heatmap_cmap,
+                z_score=0,  # No z-score by default
+                col_cluster=False
+            )
         
-        # Store the plot bytes globally
-        global current_plot_bytes
+        # Store the plot bytes and type globally
+        global current_plot_bytes, current_plot_type
         current_plot_bytes = plot_bytes
+        current_plot_type = plot_type
         
         # Format model settings for display
         display_settings = {
@@ -813,20 +903,26 @@ def run_contribution_scores(n_clicks, coordinates,selected_classes,custom_sequen
     Output('plot-download', 'data'),
     [Input('download-plot-button', 'n_clicks')],
     [State('sequence-coordinates-input', 'value'),
-     State('custom-sequence-input', 'value')]
+     State('custom-sequence-input', 'value'),
+     State('plot-type-selector', 'value')]
 )
-def download_plot(n_clicks, coordinates, custom_sequence):
+def download_plot(n_clicks, coordinates, custom_sequence, plot_type):
+    global current_plot_type
+    # Use the stored plot type if not provided
+    if plot_type is None:
+        plot_type = current_plot_type
     if n_clicks == 0 or not current_plot_bytes:
         return dash.no_update
     
     try:
-        # Create filename based on whether custom sequence is used
+        # Create filename based on plot type and whether custom sequence is used
+        plot_type_suffix = f"_{plot_type}" if plot_type else ""
         if custom_sequence and custom_sequence.strip():
-            filename = "contribution_scores_plot.png"
+            filename = f"contribution_scores{plot_type_suffix}.png"
         else:
             # Clean up coordinates for filename
             clean_coords = coordinates.replace(':', '_').replace('-', '_')
-            filename = f"contribution_scores_plot_{clean_coords}.png"
+            filename = f"contribution_scores{plot_type_suffix}_{clean_coords}.png"
         
         return dcc.send_bytes(current_plot_bytes, filename)
     except Exception as e:

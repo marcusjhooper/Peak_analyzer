@@ -1,21 +1,36 @@
 {
   "version": 1,
-  "locale": "en_CA.UTF-8",
+  "locale": "en_US.UTF-8",
   "metadata": {
     "appmode": "python-dash",
     "entrypoint": "app"
   },
   "python": {
-    "version": "3.12.11",
+    "version": "3.10.12",
     "package_manager": {
       "name": "pip",
-      "version": "25.2",
+      "version": "22.0.2",
       "package_file": "requirements.txt"
     }
   },
   "files": {
     "requirements.txt": {
-      "checksum": "a2e77c3ffe997457887015c01c690d89"
+      "checksum": "c0ae5c2fbbaa70891966c67c07c97c59"
+    },
+    ".data/AIT21_subclass.keras": {
+      "checksum": "d15b87c1e3db11e32f056a869b9ead5d"
+    },
+    ".data/AIT33_subclass.keras": {
+      "checksum": "988e29573af0dcb62090e4af6083f393"
+    },
+    ".data/classV2_35.keras": {
+      "checksum": "77f8cda42f08c1f7d4b6e4e831484bab"
+    },
+    ".data/model_settings.csv": {
+      "checksum": "f276c3213b834084a2ae95143ae9aed4"
+    },
+    ".data/thalamus_supertype_63.keras": {
+      "checksum": "ed76b23aa41e298edae3ed8f69e0f9ce"
     },
     "1.11.0": {
       "checksum": "fd7daacea3b84987a6eac0e7f640fe93"
@@ -26,23 +41,176 @@
     "DEPLOY.md": {
       "checksum": "4abff450cd0fbd8bd530943b333e45aa"
     },
+    "LICENSE": {
+      "checksum": "1ebbd3e34237af26da5dc08a4e440464"
+    },
     "README.md": {
       "checksum": "613f84896c3f6dc0ddbee52714a7f5a8"
     },
     "app.py": {
-      "checksum": "9f9d4de33f80729b4cd715b0e8c630b2"
+      "checksum": "a71eaab69a31d4362a331b43bd6762c2"
     },
     "assets/styles.css": {
       "checksum": "4169e23bfc428b170349b74bd9ebaef6"
     },
+    "data/class/01_IT_ET_Glut.bw": {
+      "checksum": "6a9bf325d6c07d5d9c8e956eea7315ae"
+    },
+    "data/class/02_NP_CT_L6b_Glut.bw": {
+      "checksum": "bcfcc34eb913c3a5094157e9bbb0f7d8"
+    },
+    "data/class/03_OB_CR_Glut.bw": {
+      "checksum": "2937438dfffb9dc49654f7b4b5043036"
+    },
+    "data/class/04_DG_IMN_Glut.bw": {
+      "checksum": "fad9af2cdaa58f09648c64515b44d4ce"
+    },
+    "data/class/05_OB_IMN_GABA.bw": {
+      "checksum": "0d43ff5609bfce09faac98a5a841a5b1"
+    },
+    "data/class/06_CTX_CGE_GABA.bw": {
+      "checksum": "9ad761f144b142b63ba7923fe9b36a25"
+    },
+    "data/class/07_CTX_MGE_GABA.bw": {
+      "checksum": "b097274dfec182b29151ce58b6ac53cd"
+    },
+    "data/class/08_CNU_MGE_GABA.bw": {
+      "checksum": "e71c924fe2fa9ea38953609b517af1a7"
+    },
+    "data/class/09_CNU_LGE_GABA.bw": {
+      "checksum": "27dea17e2b3c043405559e4f93e114a0"
+    },
+    "data/class/10_LSX_GABA.bw": {
+      "checksum": "4f9238d2c3f9a1dd81da77111ffc6bd3"
+    },
+    "data/class/11_CNU_HYa_GABA.bw": {
+      "checksum": "ac3feef0d0c4274d31cb2aa8b2e6536f"
+    },
+    "data/class/12_HY_GABA.bw": {
+      "checksum": "ca2e12abd9559e22a492455f4d351a8a"
+    },
+    "data/class/13_CNU_HYa_Glut.bw": {
+      "checksum": "1bc9da7268e4b97cf0ab514b6a7408cd"
+    },
+    "data/class/14_HY_Glut.bw": {
+      "checksum": "8584c38c36897b3ce6e23f97add42229"
+    },
+    "data/class/16_HY_MM_Glut.bw": {
+      "checksum": "3740a2bb6668d47e98041ef473528ec0"
+    },
+    "data/class/17_MH_LH_Glut.bw": {
+      "checksum": "44fec33d153afffd55b519d9fba34db1"
+    },
+    "data/class/18_TH_Glut.bw": {
+      "checksum": "a9a9ce32d018f61f52588b1b15402290"
+    },
+    "data/class/19_MB_Glut.bw": {
+      "checksum": "8fe151fda4dd47ba9c804aca200e72e0"
+    },
+    "data/class/20_MB_GABA.bw": {
+      "checksum": "99bce45563672c7b87aa52e381b17d86"
+    },
+    "data/class/21_MB_Dopa.bw": {
+      "checksum": "6c14f8ab08a5ea4e1c5264d55004ba57"
+    },
+    "data/class/22_MB_HB_Sero.bw": {
+      "checksum": "52bff8d6c1bc79553fe74989e305ae45"
+    },
+    "data/class/23_P_Glut.bw": {
+      "checksum": "10c058498fbdca7ba11150677533c909"
+    },
+    "data/class/24_MY_Glut.bw": {
+      "checksum": "6c3053334552a8de0af5e8804cc39082"
+    },
+    "data/class/25_Pineal_Glut.bw": {
+      "checksum": "553172810f52c44d6c14b04bb0b5a590"
+    },
+    "data/class/26_P_GABA.bw": {
+      "checksum": "e30a72bc946409a4abaa92d4c646b06e"
+    },
+    "data/class/27_MY_GABA.bw": {
+      "checksum": "ee4ca36fd5f145e441ad6a3f16fcf282"
+    },
+    "data/class/28_CB_GABA.bw": {
+      "checksum": "9f3a7965028175c98967f8b2efcd8b12"
+    },
+    "data/class/29_CB_Glut.bw": {
+      "checksum": "c189249d73ce12158e81d1e6a24871e2"
+    },
+    "data/class/30_Astro_Epen.bw": {
+      "checksum": "2269e3bd3b3f956af3008df4eefe68f2"
+    },
+    "data/class/31_OPC_Oligo.bw": {
+      "checksum": "5afe055402728ce48bdfa9fd6ca16caa"
+    },
+    "data/class/32_OEC.bw": {
+      "checksum": "5644fe61588a6bd3e0e23b99091e22cd"
+    },
+    "data/class/33_Vascular.bw": {
+      "checksum": "cb9d7a43b8704f4199366b24cb4ec101"
+    },
+    "data/class/34_Immune.bw": {
+      "checksum": "2c3a86662be456ec4d36bb13bece114a"
+    },
+    "data/class/35_Pituitary.bw": {
+      "checksum": "b5c7a74050472331c43caf3a76c850f9"
+    },
+    "data/differential_peaks/class_label_V1.feather": {
+      "checksum": "2a8dc094aa51960b710d163bef3c1a3b"
+    },
+    "data/differential_peaks/subclass_label_V1.feather": {
+      "checksum": "0b4d9f47dcb861df7ff6bff3e8323407"
+    },
+    "data/differential_peaks/supertype_label_V1.feather": {
+      "checksum": "9e3497715751e0007c2b11e36b82f4a9"
+    },
+    "data/genome/mm10.fa": {
+      "checksum": "7e329b2bf419a9f5a7dc42c625c884ac"
+    },
+    "data/genome/mm10.fa.bgzf": {
+      "checksum": "aca65ea3ef3906a53cf9540651b30c9d"
+    },
+    "data/genome/mm10.fa.fai": {
+      "checksum": "bf2a12783ed71d6b587a724c3c66fa8f"
+    },
+    "data/model/AIT21_subclass.keras": {
+      "checksum": "d15b87c1e3db11e32f056a869b9ead5d"
+    },
+    "data/model/AIT33_subclass.keras": {
+      "checksum": "988e29573af0dcb62090e4af6083f393"
+    },
+    "data/model/classV2_35.keras": {
+      "checksum": "77f8cda42f08c1f7d4b6e4e831484bab"
+    },
+    "data/model/model_settings.csv": {
+      "checksum": "f276c3213b834084a2ae95143ae9aed4"
+    },
+    "data/model/thalamus_supertype_63.keras": {
+      "checksum": "ed76b23aa41e298edae3ed8f69e0f9ce"
+    },
+    "data/other/.~lock.cell_type_colors.csv#": {
+      "checksum": "207239c36031d87f6a348429ac523a24"
+    },
+    "data/other/AIT21_cldf.csv": {
+      "checksum": "c44f1d52420c066361512ae9ec235933"
+    },
+    "data/other/cell_type_colors.csv": {
+      "checksum": "83ce8823bc3b9e5c9ba2edf507b8b661"
+    },
     "data_loading.py": {
       "checksum": "d461d41d3d392fc1752f25a43ebf02af"
+    },
+    "docker/dockerfile": {
+      "checksum": "768da43e04eb7d68fe405407d7382cf1"
+    },
+    "docker/requirements.txt": {
+      "checksum": "81b4c654e2048da5f535d261ecf3e234"
     },
     "environment.yml": {
       "checksum": "dcbf6438b1b5db82506b358be03a963e"
     },
     "plotting.py": {
-      "checksum": "b5a8f31f7e4f4a00c3edadf08355f630"
+      "checksum": "e0632f04e8c66c7ac4aadb01541d39fa"
     },
     "utils.py": {
       "checksum": "ba685fb379c5402f51bf76f1f5afae05"
