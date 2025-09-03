@@ -280,8 +280,6 @@ def plot_heatmap(
         cbar.set_ticks([data_min, data_max])
         cbar.set_ticklabels(['Min', 'Max'])
         
-        # Remove the title to avoid overlapping
-        # g.fig.suptitle('Contribution Scores', fontsize=14, fontweight='bold', y=0.98)
         
         # Adjust the heatmap position to reduce white space and align with color bar
         g.ax_heatmap.set_position([0.15, 0.1, 0.7, 0.8])  # [left, bottom, width, height]
@@ -301,7 +299,7 @@ def plot_heatmap(
         
         # Rotate y-axis labels to horizontal
         g.ax_heatmap.set_yticklabels(g.ax_heatmap.get_yticklabels(), rotation=0)
-        
+        g.ax_heatmap.set_xlabel('')
         if save_file is not None:
             plt.savefig(save_file)
         
