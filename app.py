@@ -33,8 +33,7 @@ from data_loading import (
     load_differential_peaks, 
     load_model_settings,
     scan_for_peak_tables,
-    load_gene_annotations,
-    find_genes_in_region
+    load_gene_annotations
 )
 from plotting import create_contribution_scores_plot, create_plot, contribution_scores_df, plot_heatmap, create_contribution_scores_dataframe
 
