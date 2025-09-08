@@ -48,10 +48,25 @@
       "checksum": "613f84896c3f6dc0ddbee52714a7f5a8"
     },
     "app.py": {
-      "checksum": "02f0bb88b6fe14af72fa4ba33d696020"
+      "checksum": "856c668457da672367d9b53e87e3d588"
     },
     "assets/styles.css": {
       "checksum": "4169e23bfc428b170349b74bd9ebaef6"
+    },
+    "data/annotation/mm10_gene_regions.bed": {
+      "checksum": "2beeadf1cfa9de57f20b92a09e0c2744"
+    },
+    "data/annotation/mm10_genes.bed": {
+      "checksum": "79088a426340e7094d5293389a19f5ee"
+    },
+    "data/annotation/mm10_genes.bed.gz": {
+      "checksum": "c3a09fe4cc9c6e5fcc1dc26a536c67ff"
+    },
+    "data/annotation/mm10_kgXref.txt.gz": {
+      "checksum": "87d05ec7a0cc81e77fb5a571ea77a8be"
+    },
+    "data/annotation/mm10_knownGene.bed.gz": {
+      "checksum": "de8bb696cf766dc0b047c1511c142713"
     },
     "data/class/01_IT_ET_Glut.bw": {
       "checksum": "6a9bf325d6c07d5d9c8e956eea7315ae"
@@ -155,6 +170,12 @@
     "data/class/35_Pituitary.bw": {
       "checksum": "b5c7a74050472331c43caf3a76c850f9"
     },
+    "data/convert_genes_to_bed.py": {
+      "checksum": "32e11e5be862ed2c8c101c7a72634f93"
+    },
+    "data/create_gene_regions.py": {
+      "checksum": "a119ace3acba51a035178d5df6294528"
+    },
     "data/differential_peaks/class_label_V1.feather": {
       "checksum": "2a8dc094aa51960b710d163bef3c1a3b"
     },
@@ -198,7 +219,7 @@
       "checksum": "83ce8823bc3b9e5c9ba2edf507b8b661"
     },
     "data_loading.py": {
-      "checksum": "d461d41d3d392fc1752f25a43ebf02af"
+      "checksum": "1b5bfacd2c8bae7a26de98e83e60c5cf"
     },
     "docker/dockerfile": {
       "checksum": "768da43e04eb7d68fe405407d7382cf1"
@@ -210,7 +231,7 @@
       "checksum": "dcbf6438b1b5db82506b358be03a963e"
     },
     "plotting.py": {
-      "checksum": "13032a678a9d7343c192c16ffca437c7"
+      "checksum": "029d7283d2c2417521046116a93e68e2"
     },
     "utils.py": {
       "checksum": "ba685fb379c5402f51bf76f1f5afae05"

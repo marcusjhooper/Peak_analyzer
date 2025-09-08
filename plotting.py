@@ -66,9 +66,6 @@ def create_contribution_scores_dataframe(scores, one_hot_encoded_sequences, clas
         
         score_df = get_scores_all_classes(feature_scores, coordinates_list, class_labels)
         
-        # Debug: check if DataFrame is empty
-        logger.info(f"Created DataFrame with {len(score_df)} rows and columns: {list(score_df.columns)}")
-        
         if score_df.empty:
             logger.warning("DataFrame is empty, returning empty DataFrame")
             return score_df
@@ -147,7 +144,6 @@ def contribution_scores_df(sequence,
         try:
             score_df['scaled_contribution_score'] = score_df.groupby('coordinates')['contribution_score'].transform(zscore)
         except Exception as e:
-            logger.warning(f"Could not add scaled scores: {e}")
             score_df['scaled_contribution_score'] = score_df['contribution_score']
         
         if form == 'long':
@@ -251,9 +247,6 @@ def plot_heatmap(
             figsize=figsize
         )
         
-        # Pattern match colors are all grey anyway, so we'll just use nucleotide colors
-        # This avoids the grey bar issue entirely
-        
         # Remove the automatic color bar
         if hasattr(g, 'cax') and g.cax is not None:
             g.cax.remove()
@@ -270,8 +263,6 @@ def plot_heatmap(
         cbar.set_ticks([data_min, data_max])
         cbar.set_ticklabels(['Min', 'Max'])
         
-        # Remove the title to avoid overlapping
-        # g.fig.suptitle('Contribution Scores', fontsize=14, fontweight='bold', y=0.98)
         
         # Adjust the heatmap position to reduce white space and align with color bar
         g.ax_heatmap.set_position([0.15, 0.1, 0.7, 0.8])  # [left, bottom, width, height]
@@ -321,7 +312,71 @@ def plot_heatmap(
         logger.error(f"Error creating heatmap: {str(e)}")
         raise
 
-def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell_type_colors=None, zoom_factor=1.0):
+def plot_gene_track(ax, genes_df, chrom, start, end):
+    """Plot gene annotations as a track."""
+    try:
+        if genes_df.empty:
+            return
+        
+        # Find genes in the region
+        chrom_genes = genes_df[genes_df['chrom'] == chrom]
+        if chrom_genes.empty:
+            return
+        
+        # Find overlapping genes
+        overlapping = chrom_genes[
+            (chrom_genes['start'] < end) & (chrom_genes['end'] > start)
+        ].copy()
+        
+        if overlapping.empty:
+            return
+        
+        # Plot each gene
+        for _, gene in overlapping.iterrows():
+            gene_start = max(gene['start'], start)
+            gene_end = min(gene['end'], end)
+            
+            # Draw gene as a rectangle
+            height = 0.3
+            y_pos = 0.5  # Center the gene rectangles
+            
+            # Color based on strand
+            color = 'blue' if gene['strand'] == '+' else 'red'
+            
+            # Draw gene body
+            ax.barh(y_pos, gene_end - gene_start, height=height, left=gene_start, 
+                   color=color, alpha=0.7, edgecolor='black', linewidth=0.5)
+            
+            # Add gene name below the gene rectangle
+            ax.text(gene_start + (gene_end - gene_start) / 2, 0.05, 
+                   gene['name'], ha='center', va='center', fontsize=12)
+            
+            # Add strand arrow
+            arrow_length = min(1000, (gene_end - gene_start) / 4)
+            if gene['strand'] == '+':
+                ax.arrow(gene_end - arrow_length, y_pos, arrow_length, 0,
+                        head_width=0.05, head_length=200, fc=color, ec=color)
+            else:
+                ax.arrow(gene_start + arrow_length, y_pos, -arrow_length, 0,
+                        head_width=0.05, head_length=200, fc=color, ec=color)
+        
+        # Set y-axis limits
+        ax.set_ylim(0, 1)
+        ax.set_ylabel('Genes', fontsize=10)
+        ax.set_yticks([])
+        
+        # Remove borders, ticks, and x-axis labels
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.set_xticks([])
+        ax.set_xticklabels([])
+        
+    except Exception as e:
+        logger.error(f"Error plotting gene track: {e}")
+
+def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell_type_colors=None, zoom_factor=1.0, genes_df=None):
     """Create a plot from BigWig files."""
     try:
         if not selected_files:
@@ -397,20 +452,38 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
         # Add 10% padding to the max value
         max_value = max_value * 1.1
         
+        # Determine number of tracks (bigwig tracks + gene track if available)
+        num_tracks = len(valid_files)
+        has_genes = genes_df is not None and not genes_df.empty
+        
+        if has_genes:
+            num_tracks += 1
+            height_ratios = [1] * len(valid_files) + [0.8]  # Gene track is even taller
+        else:
+            height_ratios = [1] * len(valid_files)
+        
         # Create the figure with stacked subplots
         fig, axes = plt.subplots(
-            len(valid_files), 1,
-            figsize=(12, 0.5 * len(valid_files)),
+            num_tracks, 1,
+            figsize=(12, 0.5 * num_tracks),
             sharex=True,
-            gridspec_kw={'height_ratios': [1] * len(valid_files), 'hspace': 0.2}
+            gridspec_kw={'height_ratios': height_ratios, 'hspace': 0.2}
         )
         
         # If there's only one subplot, make it a list for consistency
-        if len(valid_files) == 1:
+        if num_tracks == 1:
             axes = [axes]
         
+        # Separate bigwig axes from gene axis
+        if has_genes:
+            bigwig_axes = axes[:-1]  # All except the last one
+            gene_axis = axes[-1]     # The last one
+        else:
+            bigwig_axes = axes
+            gene_axis = None
+        
         # Plot each selected bigwig file
-        for i, (file_path, ax) in enumerate(zip(valid_files, axes)):
+        for i, (file_path, ax) in enumerate(zip(valid_files, bigwig_axes)):
             try:
                 # Get the file name and cell type
                 file_name = os.path.basename(file_path)
@@ -485,6 +558,10 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
             except Exception as e:
                 logger.error(f"Error processing file {file_path}: {str(e)}")
                 continue
+        
+        # Plot gene track if available
+        if has_genes and gene_axis is not None:
+            plot_gene_track(gene_axis, genes_df, chrom, start, end)
         
         # Adjust layout to prevent label overlap
         plt.tight_layout()

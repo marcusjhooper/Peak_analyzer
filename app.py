@@ -32,7 +32,9 @@ from data_loading import (
     scan_for_bigwigs, 
     load_differential_peaks, 
     load_model_settings,
-    scan_for_peak_tables
+    scan_for_peak_tables,
+    load_gene_annotations,
+    find_genes_in_region
 )
 from plotting import create_contribution_scores_plot, create_plot, contribution_scores_df, plot_heatmap, create_contribution_scores_dataframe
 
@@ -94,6 +96,7 @@ cell_type_colors = load_cell_type_colors(os.path.join(DATA_DIR, 'other/cell_type
 diff_peaks_df, diff_peaks_columns = load_differential_peaks()
 bigwig_df = scan_for_bigwigs()
 peak_table_options = scan_for_peak_tables(DATA_DIR)
+gene_annotations = load_gene_annotations(DATA_DIR)
 
 # Load hierarchy information
 hierarchy_df = pd.read_csv(os.path.join(DATA_DIR, 'other/AIT21_cldf.csv'))
@@ -792,18 +795,10 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes, custom_sequ
             if not seq_str:
                 raise ValueError("Empty sequence returned")
             
-            # Log sequence details
-            logger.info(f"Retrieved sequence of length {len(seq_str)}")
-            logger.debug(f"First 10 bases: {seq_str[:10]}")
-            logger.debug(f"Last 10 bases: {seq_str[-10:]}")
             
         except Exception as e:
             logger.error(f"Error getting sequence: {str(e)}")
             raise ValueError(f"Failed to get valid sequence: {str(e)}")
-        
-        logger.info(f"Got sequence of length {len(seq_str)} (centered at {center})")
-        logger.info(f"Original coordinates: {start}-{end}")
-        logger.info(f"Adjusted coordinates: {new_start}-{new_end}")
         
         # Run contribution scores
         logger.info("Calculating contribution scores...")
@@ -857,10 +852,6 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes, custom_sequ
             print(f"DEBUG: Heatmap branch entered")
             # Create contribution scores dataframe using the already calculated scores
             coordinates_str = f"{chrom}:{new_start}-{new_end}"
-            logger.info(f"Creating heatmap for coordinates: {coordinates_str}")
-            logger.info(f"Scores type: {type(scores)}, shape: {scores.shape if hasattr(scores, 'shape') else 'no shape'}")
-            logger.info(f"Class labels: {class_labels}")
-            logger.info(f"Sequence length: {len(seq_str)}")
             
             try:
                 score_df = create_contribution_scores_dataframe(
@@ -876,9 +867,6 @@ def run_contribution_scores(n_clicks, coordinates, selected_classes, custom_sequ
                 raise
             
             # Create heatmap
-            logger.info(f"Creating heatmap with DataFrame shape: {score_df.shape}")
-            logger.info(f"DataFrame columns: {list(score_df.columns)}")
-            logger.info(f"Coordinates string: {coordinates_str}")
             
             base64_data, plot_bytes = plot_heatmap(
                 df=score_df,
@@ -986,7 +974,7 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_3x, zoo
     ctx = dash.callback_context
     if not ctx.triggered:
         # On initial load, use the default coordinates with default zoom
-        default_coords = 'chr19:23980545-23981046'
+        default_coords = 'chr18:58788458-58788958'
         zoom_level = -1000  # Default zoom out 1kb
         
         # Convert URLs to file paths
@@ -994,9 +982,9 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_3x, zoo
         subclass_file_paths = [subclass_bigwigs[subclass]['file'] for subclass in sorted(subclass_bigwigs.keys())]
         supertype_file_paths = [supertype_bigwigs[supertype]['file'] for supertype in sorted(supertype_bigwigs.keys())]
         
-        class_plot = create_plot(class_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0)
-        subclass_plot = create_plot(subclass_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0)
-        supertype_plot = create_plot(supertype_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0)
+        class_plot = create_plot(class_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0, gene_annotations)
+        subclass_plot = create_plot(subclass_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0, gene_annotations)
+        supertype_plot = create_plot(supertype_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0, gene_annotations)
         return default_coords, default_coords, class_plot, subclass_plot, supertype_plot, [], default_coords
     
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
@@ -1136,9 +1124,9 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_3x, zoo
     # For other triggers (like default zoom), use the original zoom_factor
     plot_zoom_factor = 1.0 if trigger_id in ['zoom-out-3x', 'zoom-out-10x', 'zoom-in-3x', 'zoom-in-10x'] else zoom_factor
     
-    class_plot = create_plot(class_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor)
-    subclass_plot = create_plot(subclass_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor)
-    supertype_plot = create_plot(supertype_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor)
+    class_plot = create_plot(class_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor, gene_annotations)
+    subclass_plot = create_plot(subclass_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor, gene_annotations)
+    supertype_plot = create_plot(supertype_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor, gene_annotations)
     
     return new_coords, original_coords, class_plot, subclass_plot, supertype_plot, selected_row if selected_row else dash.no_update, original_coords
 

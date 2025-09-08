@@ -194,4 +194,29 @@ def load_model_settings(model_path, data_dir):
         return settings
     except Exception as e:
         logger.error(f"Error loading model settings: {str(e)}")
-        raise 
+        raise
+
+def load_gene_annotations(data_dir=None):
+    """Load gene annotations from BED file."""
+    try:
+        if data_dir is not None:
+            gene_file = os.path.join(data_dir, 'annotation/mm10_gene_regions.bed')
+        else:
+            gene_file = 'data/annotation/mm10_gene_regions.bed'
+        
+        if not os.path.exists(gene_file):
+            logger.warning(f"Gene annotation file not found at {gene_file}")
+            return pd.DataFrame()
+        
+        # Load BED file
+        genes = pd.read_csv(gene_file, sep='\t', header=None,
+                           names=['chrom', 'start', 'end', 'name', 'score', 'strand'])
+        
+        logger.info(f"Loaded {len(genes)} gene annotations")
+        return genes
+        
+    except Exception as e:
+        logger.error(f"Error loading gene annotations: {str(e)}")
+        return pd.DataFrame()
+
+
