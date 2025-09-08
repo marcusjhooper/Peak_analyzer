@@ -58,17 +58,9 @@ def mark_sequence_matches(df, seq_col, pattern):
 
 def create_contribution_scores_dataframe(scores, one_hot_encoded_sequences, class_labels, coordinates, sequence):
     """Create a dataframe from already calculated contribution scores."""
-    print(f"DEBUG: create_contribution_scores_dataframe called with {len(class_labels)} class labels")
     try:
-        # Debug: log the structure of scores
-        logger.info(f"Scores type: {type(scores)}")
-        if hasattr(scores, 'shape'):
-            logger.info(f"Scores shape: {scores.shape}")
-        else:
-            logger.info(f"Scores length: {len(scores) if hasattr(scores, '__len__') else 'no length'}")
         
-        # Use the correct function with the right parameters
-        # feature_scores should be [scores, one_hot_encoded_sequences]
+        # Prepare data for processing
         feature_scores = [scores, one_hot_encoded_sequences]
         coordinates_list = [coordinates]  # Single coordinate for single sequence
         
@@ -231,8 +223,6 @@ def plot_heatmap(
         pattern_match_palette = dict(zip(['no_match','match','reverse'],['#d3d3d3','#00FF7F','blue']))
         pattern_match_cols = [pattern_match_palette.get(x, '#d3d3d3') for x in match_df['match_status']]
         
-        # Debug: check if pattern_match_cols is causing the grey bar
-        logger.info(f"Pattern match colors: {pattern_match_cols[:10]}...")  # Show first 10 colors
         
         # Zoom handling
         if zoom_to is not None and zoom_to < heatmap_data.shape[1]:
@@ -280,6 +270,8 @@ def plot_heatmap(
         cbar.set_ticks([data_min, data_max])
         cbar.set_ticklabels(['Min', 'Max'])
         
+        # Remove the title to avoid overlapping
+        # g.fig.suptitle('Contribution Scores', fontsize=14, fontweight='bold', y=0.98)
         
         # Adjust the heatmap position to reduce white space and align with color bar
         g.ax_heatmap.set_position([0.15, 0.1, 0.7, 0.8])  # [left, bottom, width, height]
@@ -299,7 +291,11 @@ def plot_heatmap(
         
         # Rotate y-axis labels to horizontal
         g.ax_heatmap.set_yticklabels(g.ax_heatmap.get_yticklabels(), rotation=0)
+        
+        # Remove axis titles
         g.ax_heatmap.set_xlabel('')
+        g.ax_heatmap.set_ylabel('')
+        
         if save_file is not None:
             plt.savefig(save_file)
         
@@ -325,7 +321,7 @@ def plot_heatmap(
         logger.error(f"Error creating heatmap: {str(e)}")
         raise
 
-def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell_type_colors=None):
+def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell_type_colors=None, zoom_factor=1.0):
     """Create a plot from BigWig files."""
     try:
         if not selected_files:
@@ -346,19 +342,29 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
             _, original_start, original_end = parse_coordinates(original_coords)
             logger.info(f"Original coordinates: {original_start}-{original_end}")
         
-        # Adjust coordinates based on zoom level
-        if zoom_level != 0:
+        # Adjust coordinates based on zoom level and zoom factor
+        if zoom_level != 0 or zoom_factor != 1.0:
             center = (start + end) // 2
             half_width = (end - start) // 2
-            if zoom_level > 0:
-                # Zoom in
-                half_width = max(100, half_width - abs(zoom_level))
-            else:
-                # Zoom out
-                half_width = half_width + abs(zoom_level)
+            
+            # First apply the fixed zoom level (for default zoom behavior)
+            if zoom_level != 0:
+                if zoom_level > 0:
+                    # Zoom in
+                    half_width = max(100, half_width - abs(zoom_level))
+                else:
+                    # Zoom out
+                    half_width = half_width + abs(zoom_level)
+            
+            # Then apply the multiplicative zoom factor
+            if zoom_factor != 1.0:
+                half_width = int(half_width * zoom_factor)
+                # Ensure minimum width of 100bp
+                half_width = max(50, half_width)
+            
             start = center - half_width
             end = center + half_width
-            logger.info(f"Adjusted coordinates after zoom: {start}-{end}")
+            logger.info(f"Adjusted coordinates after zoom: {start}-{end} (factor: {zoom_factor}, level: {zoom_level})")
         
         # First pass: get the maximum value across all files using the original coordinates
         max_value = 0
@@ -431,17 +437,22 @@ def create_plot(selected_files, coords, zoom_level=0, original_coords=None, cell
                 # Plot the line
                 ax.plot(positions, values, color=color)
                 
-                # Highlight original region if zoomed out
-                if original_start is not None and original_end is not None and (start < original_start or end > original_end):
-                    # Get values for the original region
-                    original_values = bw.values(chrom, original_start, original_end)
-                    original_positions = range(original_start, original_end)
+                # Highlight original region if it's different from current view
+                if original_start is not None and original_end is not None and (original_start != start or original_end != end):
+                    # Check if original region overlaps with current view
+                    overlap_start = max(start, original_start)
+                    overlap_end = min(end, original_end)
                     
-                    # Plot a light blue background for the original region
-                    ax.axvspan(original_start, original_end, color='lightblue', alpha=0.2)
-                    
-                    # Plot the original line in a lighter color
-                    ax.plot(original_positions, original_values, color=color, alpha=0.5)
+                    if overlap_start < overlap_end:
+                        # Get values for the overlapping region
+                        original_values = bw.values(chrom, overlap_start, overlap_end)
+                        original_positions = range(overlap_start, overlap_end)
+                        
+                        # Plot a light blue background for the original region
+                        ax.axvspan(overlap_start, overlap_end, color='lightblue', alpha=0.2)
+                        
+                        # Plot the original line in a lighter color
+                        ax.plot(original_positions, original_values, color=color, alpha=0.5)
                 
                 # Add label to top left of the plot
                 ax.text(0.02, 0.95, cell_type, 

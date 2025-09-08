@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # Set the data directory
 
-#DATA_DIR = '/home/mh/app/ATAC_vis/data'  #local
+#DATA_DIR = '/home/mh/app/Denali/data'  #local
 DATA_DIR = '/allen/programs/celltypes/workgroups/rnaseqanalysis/mouse_multiome/app/data'
 
 
@@ -277,21 +277,39 @@ app.layout = html.Div([
 
                     html.Button('Update Plot', id='update-button', n_clicks=0, style={'marginRight': '10px', 'backGroundColor': "Springgreen"}),
 
-                    html.Button('Zoom Out 1kb', id='zoom-out-1kb', n_clicks=0, 
+                    html.Button('Zoom Out 3x', id='zoom-out-3x', n_clicks=0, 
                                style={'marginRight': '10px'}),
-                    html.Button('Zoom Out 10kb', id='zoom-out-10kb', n_clicks=0, 
+                    html.Button('Zoom Out 10x', id='zoom-out-10x', n_clicks=0, 
                                style={'marginRight': '10px'}),
-                    html.Button('Zoom In 1kb', id='zoom-in-1kb', n_clicks=0, 
+                    html.Button('Zoom In 3x', id='zoom-in-3x', n_clicks=0, 
                                style={'marginRight': '10px'}),
-                    html.Button('Zoom In 10kb', id='zoom-in-10kb', n_clicks=0, 
-                               style={'marginRight': '10px'}),
-                    dcc.Checklist(
-                        id='default-zoom',
-                        options=[{'label': 'Default zoom out 1kb', 'value': 'zoom_out'}],
-                        value=['zoom_out'],
-                        style={'display': 'inline-block', 'marginLeft': '10px'}
-                    )
+                    html.Button('Zoom In 10x', id='zoom-in-10x', n_clicks=0, 
+                               style={'marginRight': '20px'}),
+                    
+                    # Pan controls
+                    html.Label('Pan:', style={'marginRight': '10px', 'fontWeight': 'bold'}),
+                    html.Button('<<<\n100kb', id='pan-left-100k', n_clicks=0, 
+                               style={'width': '50px', 'height': '50px', 'marginRight': '5px', 
+                                     'whiteSpace': 'pre-line', 'fontSize': '12px', 'lineHeight': '1.2'}),
+                    html.Button('<<\n10kb', id='pan-left-10k', n_clicks=0, 
+                               style={'width': '50px', 'height': '50px', 'marginRight': '5px', 
+                                     'whiteSpace': 'pre-line', 'fontSize': '12px', 'lineHeight': '1.2'}),
+                    html.Button('<\n1kb', id='pan-left-1k', n_clicks=0, 
+                               style={'width': '50px', 'height': '50px', 'marginRight': '10px', 
+                                     'whiteSpace': 'pre-line', 'fontSize': '12px', 'lineHeight': '1.2'}),
+                    html.Button('>\n1kb', id='pan-right-1k', n_clicks=0, 
+                               style={'width': '50px', 'height': '50px', 'marginRight': '5px', 
+                                     'whiteSpace': 'pre-line', 'fontSize': '12px', 'lineHeight': '1.2'}),
+                    html.Button('>>\n10kb', id='pan-right-10k', n_clicks=0, 
+                               style={'width': '50px', 'height': '50px', 'marginRight': '5px', 
+                                     'whiteSpace': 'pre-line', 'fontSize': '12px', 'lineHeight': '1.2'}),
+                    html.Button('>>>\n100kb', id='pan-right-100k', n_clicks=0, 
+                               style={'width': '50px', 'height': '50px', 'marginRight': '10px', 
+                                     'whiteSpace': 'pre-line', 'fontSize': '12px', 'lineHeight': '1.2'})
                 ], style={'marginBottom': '20px'}),
+                
+                # Hidden div to store original coordinates for highlighting
+                html.Div(id='original-coordinates-store', style={'display': 'none'}),
                 
                 # BigWig Plot
                 html.Div([
@@ -678,7 +696,6 @@ def update_class_selection(model_status):
 )
 def toggle_heatmap_options(plot_type):
     """Show/hide heatmap options based on plot type selection."""
-    print(f"DEBUG: Plot type selector changed to: {plot_type}")
     if plot_type == 'heatmap':
         return {'display': 'block', 'marginTop': '10px', 'padding': '10px', 'backgroundColor': '#f8f9fa', 'borderRadius': '5px'}
     else:
@@ -935,14 +952,20 @@ def download_plot(n_clicks, coordinates, custom_sequence, plot_type):
      Output('class-plot', 'src'),
      Output('subclass-plot', 'src'),
      Output('supertype-plot', 'src'),
-     Output('peaks-table', 'selected_rows')],
+     Output('peaks-table', 'selected_rows'),
+     Output('original-coordinates-store', 'children')],
     [Input('peaks-table', 'selected_cells'),
      Input('update-button', 'n_clicks'),
-     Input('zoom-out-1kb', 'n_clicks'),
-     Input('zoom-out-10kb', 'n_clicks'),
-     Input('zoom-in-1kb', 'n_clicks'),
-     Input('zoom-in-10kb', 'n_clicks'),
-     Input('default-zoom', 'value'),
+     Input('zoom-out-3x', 'n_clicks'),
+     Input('zoom-out-10x', 'n_clicks'),
+     Input('zoom-in-3x', 'n_clicks'),
+     Input('zoom-in-10x', 'n_clicks'),
+     Input('pan-left-100k', 'n_clicks'),
+     Input('pan-left-10k', 'n_clicks'),
+     Input('pan-left-1k', 'n_clicks'),
+     Input('pan-right-1k', 'n_clicks'),
+     Input('pan-right-10k', 'n_clicks'),
+     Input('pan-right-100k', 'n_clicks'),
      Input('class-dropdown', 'value'),
      Input('subclass-dropdown', 'value'),
      Input('supertype-dropdown', 'value')],
@@ -951,11 +974,14 @@ def download_plot(n_clicks, coordinates, custom_sequence, plot_type):
      State('peaks-table', 'derived_virtual_selected_rows'),
      State('peaks-table', 'page_current'),
      State('peaks-table', 'page_size'),
-     State('coordinates-input', 'value')]
+     State('coordinates-input', 'value'),
+     State('original-coordinates-store', 'children')],
+    prevent_initial_call=False
 )
-def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zoom_out_10kb, zoom_in_1kb, zoom_in_10kb, 
-                               default_zoom, class_files, subclass_files, supertype_files, table_data, derived_virtual_data, 
-                               derived_virtual_selected_rows, page_current, page_size, current_coords):
+def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_3x, zoom_out_10x, zoom_in_3x, zoom_in_10x, 
+                               pan_left_100k, pan_left_10k, pan_left_1k, pan_right_1k, pan_right_10k, pan_right_100k,
+                               class_files, subclass_files, supertype_files, table_data, derived_virtual_data, 
+                               derived_virtual_selected_rows, page_current, page_size, current_coords, stored_original_coords):
     # Get the context to determine which input triggered the callback
     ctx = dash.callback_context
     if not ctx.triggered:
@@ -968,33 +994,89 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
         subclass_file_paths = [subclass_bigwigs[subclass]['file'] for subclass in sorted(subclass_bigwigs.keys())]
         supertype_file_paths = [supertype_bigwigs[supertype]['file'] for supertype in sorted(supertype_bigwigs.keys())]
         
-        class_plot = create_plot(class_file_paths, default_coords, zoom_level, default_coords, cell_type_colors)
-        subclass_plot = create_plot(subclass_file_paths, default_coords, zoom_level, default_coords, cell_type_colors)
-        supertype_plot = create_plot(supertype_file_paths, default_coords, zoom_level, default_coords, cell_type_colors)
-        return default_coords, default_coords, class_plot, subclass_plot, supertype_plot, []
+        class_plot = create_plot(class_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0)
+        subclass_plot = create_plot(subclass_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0)
+        supertype_plot = create_plot(supertype_file_paths, default_coords, zoom_level, default_coords, cell_type_colors, 1.0)
+        return default_coords, default_coords, class_plot, subclass_plot, supertype_plot, [], default_coords
     
     trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
-    # Initialize coordinates and zoom level
+    # Initialize coordinates
     new_coords = current_coords
+    original_coords = stored_original_coords if stored_original_coords is not None else current_coords
     selected_row = None
-    zoom_level = 0
+    zoom_factor = 1.0
     
-    # Apply default zoom if checkbox is checked - now applies to all input types
-    if 'zoom_out' in default_zoom:
-        zoom_level = -1000
+    
+    zoom_level = -1000  # Default 1kb zoom-out
     
     # Handle zoom controls
-    if trigger_id == 'zoom-out-1kb':
-        zoom_level = -1000
-    elif trigger_id == 'zoom-out-10kb':
-        zoom_level = -10000
-    elif trigger_id == 'zoom-in-1kb':
-        zoom_level = 1000
-    elif trigger_id == 'zoom-in-10kb':
-        zoom_level = 10000
+    if trigger_id in ['zoom-out-3x', 'zoom-out-10x', 'zoom-in-3x', 'zoom-in-10x']:
+        if trigger_id == 'zoom-out-3x':
+            zoom_factor = 3.0
+        elif trigger_id == 'zoom-out-10x':
+            zoom_factor = 10.0
+        elif trigger_id == 'zoom-in-3x':
+            zoom_factor = 1.0/3.0
+        elif trigger_id == 'zoom-in-10x':
+            zoom_factor = 1.0/10.0
+        
+        # Apply zoom to current coordinates and update new_coords
+        # Keep original_coords unchanged for highlighting
+        try:
+            chrom, start, end = parse_coordinates(current_coords)
+            center = (start + end) // 2
+            half_width = (end - start) // 2
+            
+            # Apply the zoom factor
+            new_half_width = int(half_width * zoom_factor)
+            new_half_width = max(50, new_half_width)  # Minimum 100bp window
+            
+            new_start = center - new_half_width
+            new_end = center + new_half_width
+            new_coords = f"{chrom}:{new_start}-{new_end}"
+            
+        except Exception as e:
+            logger.error(f"Error applying zoom: {e}")
+            # Fall back to original coordinates if parsing fails
+            new_coords = current_coords
     
-    # If triggered by cell selection, update coordinates and row selection
+    # Handle pan controls
+    if trigger_id in ['pan-left-100k', 'pan-left-10k', 'pan-left-1k', 'pan-right-1k', 'pan-right-10k', 'pan-right-100k']:
+        try:
+            chrom, start, end = parse_coordinates(current_coords)
+            window_size = end - start
+            
+            # Determine pan distance
+            if trigger_id == 'pan-left-100k':
+                pan_distance = -100000
+            elif trigger_id == 'pan-left-10k':
+                pan_distance = -10000
+            elif trigger_id == 'pan-left-1k':
+                pan_distance = -1000
+            elif trigger_id == 'pan-right-1k':
+                pan_distance = 1000
+            elif trigger_id == 'pan-right-10k':
+                pan_distance = 10000
+            elif trigger_id == 'pan-right-100k':
+                pan_distance = 100000
+            
+            # Apply pan
+            new_start = start + pan_distance
+            new_end = end + pan_distance
+            new_coords = f"{chrom}:{new_start}-{new_end}"
+            
+        except Exception as e:
+            logger.error(f"Error applying pan: {e}")
+            # Fall back to original coordinates if parsing fails
+            new_coords = current_coords
+    
+    # Handle user input updates
+    if trigger_id == 'update-button':
+        new_coords = current_coords
+        original_coords = current_coords
+    
+    # Handle table selection
     if trigger_id == 'peaks-table' and selected_cells:
         # Get the first selected cell
         cell = selected_cells[0]
@@ -1015,6 +1097,7 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
                 coord_value = row_data['coordinates']
                 if isinstance(coord_value, str) and re.match(r'[^:]+:\d+-\d+', coord_value):
                     new_coords = coord_value
+                    original_coords = coord_value
                     selected_row = [row_idx]
                 else:
                     logger.warning(f"Invalid coordinate format: {coord_value}")
@@ -1049,11 +1132,15 @@ def update_coordinates_and_plots(selected_cells, update_clicks, zoom_out_1kb, zo
                 supertype_file_paths.append(supertype_bigwigs[supertype_name]['file'])
     
     # Create plots for each category
-    class_plot = create_plot(class_file_paths, new_coords, zoom_level, new_coords, cell_type_colors)
-    subclass_plot = create_plot(subclass_file_paths, new_coords, zoom_level, new_coords, cell_type_colors)
-    supertype_plot = create_plot(supertype_file_paths, new_coords, zoom_level, new_coords, cell_type_colors)
+    # For zoom controls, we've already applied the zoom to new_coords, so use zoom_factor=1.0
+    # For other triggers (like default zoom), use the original zoom_factor
+    plot_zoom_factor = 1.0 if trigger_id in ['zoom-out-3x', 'zoom-out-10x', 'zoom-in-3x', 'zoom-in-10x'] else zoom_factor
     
-    return new_coords, new_coords, class_plot, subclass_plot, supertype_plot, selected_row if selected_row else dash.no_update
+    class_plot = create_plot(class_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor)
+    subclass_plot = create_plot(subclass_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor)
+    supertype_plot = create_plot(supertype_file_paths, new_coords, zoom_level, original_coords, cell_type_colors, plot_zoom_factor)
+    
+    return new_coords, original_coords, class_plot, subclass_plot, supertype_plot, selected_row if selected_row else dash.no_update, original_coords
 
 def reverse_complement(seq):
     """Return the reverse complement of a DNA sequence."""
